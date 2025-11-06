@@ -158,6 +158,12 @@ function renderTable(openIndex = null) {
         td.classList.add('placeholder-load-cell');
         td.style.cursor = 'pointer';
 
+        // 中央的「載入 CSV」膠囊
+        const pill = document.createElement('span');
+        pill.classList.add('placeholder-pill');
+        pill.textContent = '📂 載入 CSV';
+        td.appendChild(pill);
+
         td.addEventListener('click', () => {
             const importInput = document.getElementById('importCSVCard');
             if (importInput) {

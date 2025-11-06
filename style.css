@@ -414,15 +414,13 @@ tbody tr {
 .placeholder-load-cell {
     position: relative;
     text-align: center;
-    overflow: hidden;
+    padding: 32px 0;
+    overflow: visible;
 }
 
-.placeholder-load-cell::before {
-    content: '📂 載入 CSV';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(1);
+/* 載入 CSV 膠囊 */
+.placeholder-pill {
+    display: inline-block;
     padding: 10px 24px;
     border-radius: 999px;
     font-size: 1rem;
@@ -434,11 +432,10 @@ tbody tr {
     opacity: 0.96;
 }
 
-.placeholder-load-cell:hover::before {
-    transform: translate(-50%, -50%) scale(0.94);
+.placeholder-load-cell:hover .placeholder-pill {
+    transform: scale(0.94);
     background: rgba(0,0,0,0.5);
 }
-
 tbody tr:hover {
     background: rgba(255,255,255,0.14);
     transform: translateY(-1px);
