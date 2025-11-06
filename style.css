@@ -1,0 +1,723 @@
+/* 全局樣式 */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #f0f0f5;
+    padding: 20px;
+}
+
+.container {
+    display: flex;
+    gap: 56px; /* 增加左右卡片間距，避免重疊 */
+    align-items: flex-start; /* 左側置頂 */
+}
+
+/* 左側區域 */
+.left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 250px;
+    position: sticky;
+    top: 20px; /* 置頂 */
+    height: fit-content;
+}
+
+/* 卡片樣式 */
+.card {
+    width: 250px;
+    padding: 20px;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.14);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
+}
+
+.logo-card {
+    min-height: 30px; /* 高度接近上方新增列 */
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-card .logo-image {
+    display: block;
+    width: 50%;
+    height: auto;
+    object-fit: contain;
+}
+
+.card h3 {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+/* Dashboard 膠囊 */
+.capsule-column {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* 膠囊靠右 */
+    gap: 6px;
+}
+
+.capsule-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+}
+
+.capsule-row .label {
+    flex: 1;
+    text-align: left; /* 標題靠左 */
+}
+
+/* 膠囊顏色 */
+.capsule.black {
+    background: linear-gradient(135deg, rgba(0,0,0,0.92), rgba(32,32,32,0.92));
+    color: #fff;
+    font-weight: bold;
+    border-color: rgba(255,255,255,0.25);
+}
+
+.capsule.black.total-value {
+    background: linear-gradient(135deg, rgba(85,85,85,0.95), rgba(40,40,40,0.95));
+}
+
+.capsule.dark-gray {
+    background: linear-gradient(135deg, rgba(85,85,85,0.95), rgba(40,40,40,0.95));
+    color: #fff;
+}
+
+.capsule.yellow {
+    background: linear-gradient(135deg,
+        rgba(255,235,59,0.96),
+        rgba(255,235,59,0.8)
+    );
+    color: #000;
+    font-weight: bold;
+    border-color: rgba(255,235,59,0.9);
+}
+
+/* 按鈕 */
+button,
+.icon-button {
+    width: 100%;
+    margin: 5px 0;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.45);
+    background: linear-gradient(135deg,
+        rgba(0,122,255,0.95),
+        rgba(0,122,255,0.75)
+    );
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.18s ease;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+button:hover,
+.icon-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.26);
+}
+
+button:active,
+.icon-button:active {
+    transform: translateY(0);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+}
+
+/* OT 上下箭頭：覆蓋一般按鈕樣式，縮小並貼在膠囊左右 */
+.ot-arrow {
+    width: auto;
+    height: auto;
+    min-width: 0;
+    margin: 0 2px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+    gap: 0;
+    color: #000;
+}
+
+.ot-arrow:active,
+.ot-arrow:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.material-symbols-outlined {
+    font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24;
+    font-size: 1.2rem;
+}
+
+/* 輸入設定卡片內的數字輸入框 */
+.settings-card input[type="number"] {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 4px 0 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.45);
+    background: rgba(207, 207, 207, 0.95);
+    outline: none;
+    color: #111;
+    font-size: 0.9rem;
+}
+
+.settings-card input[type="number"]:focus {
+    box-shadow: 0 0 0 1px rgba(0,122,255,0.7);
+}
+
+/* 輸入設定卡片內的國家下拉選單 */
+.settings-card select {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 4px 0 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.45);
+    background: rgba(207, 207, 207, 0.95);
+    outline: none;
+    color: #111;
+    font-size: 0.9rem;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.settings-card select:focus {
+    box-shadow: 0 0 0 1px rgba(0,122,255,0.7);
+}
+
+/* 設定區按鈕排列 */
+.settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* 設定卡片內的 icon 按鈕，縮成小圓形 */
+.settings-card .icon-button {
+    align-self: flex-start;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+}
+
+.settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.file-label {
+    cursor: pointer;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+/* 右側區域 */
+.right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: visible; /* 讓 thead:sticky 以整個頁面滾動為基準 */
+}
+
+
+/* 新增卡片 */
+.add-card {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+    position: sticky;
+    top: 0;
+    background: rgba(255,255,255,0.14);
+    padding: 10px;
+    border-radius: 18px;
+    z-index: 10;
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
+}
+
+/* 新增列輸入框：類 ChatGPT 輸入樣式 */
+.add-card input[type="number"],
+.add-card input[type="text"],
+.add-card input[type="date"] {
+    flex: 1;
+    min-width: 0;
+    margin: 0 4px 0 0;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.45);
+    background: rgba(207, 207, 207, 0.95);
+    outline: none;
+    font-size: 0.85rem;
+    color: #111;
+}
+
+.add-card input[type="number"]:focus,
+.add-card input[type="text"]:focus,
+.add-card input[type="date"]:focus {
+    box-shadow: 0 0 0 1px rgba(0,122,255,0.7);
+}
+
+/* 新增列的新增 icon 縮小，保留空間給輸入框 */
+.add-card .icon-button {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+}
+
+/* 新增列中的 Travel toggle 按鈕 */
+#travelToggle {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.45);
+    background: linear-gradient(135deg,
+        rgba(160,160,160,0.95),
+        rgba(120,120,120,0.85)
+    );
+    color: #222;
+}
+
+/* Travel 開啟狀態：跟新增 (+) 按鈕一樣藍色，動畫沿用全域 button 規則 */
+#travelToggle.on {
+    background: linear-gradient(135deg,
+        rgba(0,122,255,0.95),
+        rgba(0,122,255,0.75)
+    );
+    color: #fff;
+}
+
+/* 表格 */
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 10px;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border-radius: 24px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
+}
+
+thead {
+    background: linear-gradient(135deg,
+        rgba(255,235,59,0.92),   /* yellow */
+        rgba(160,231,160,0.9),   /* green */
+        rgba(255,200,124,0.9)    /* orange */
+    );
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+}
+
+/* 加班總時數使用與表頭相同漸層底色，文字改黑色 */
+#totalOT {
+    background: linear-gradient(135deg,
+        rgba(255,235,59,0.92),
+        rgba(160,231,160,0.9),
+        rgba(255,200,124,0.9)
+    );
+    color: #111;
+}
+
+th, td {
+    padding: 10px 12px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.18);
+    border-right: none;
+}
+
+th {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #111;
+    font-size: 0.9rem;
+}
+
+thead th {
+    position: sticky; /* 標題固定 */
+    top: 0;
+    z-index: 5;
+}
+
+tbody {
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+tbody tr {
+    transition: background 0.18s ease, transform 0.12s ease;
+    position: relative;
+}
+
+/* 尚未載入資料時的占位列 */
+.placeholder-row td {
+    padding: 16px 12px;
+    background: rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.14);
+}
+
+.placeholder-row:last-child td {
+    border-bottom: none;
+}
+
+.placeholder-row {
+    transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.placeholder-row:hover {
+    background: rgba(255,255,255,0.12);
+    transform: translateY(-1px) scale(1.01);
+}
+
+/* 假表上顯示「載入 CSV」提示（置中大字） */
+.placeholder-load-cell {
+    position: relative;
+    text-align: center;
+    overflow: hidden;
+}
+
+.placeholder-load-cell::before {
+    content: '📂 載入 CSV';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    padding: 10px 24px;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(0,0,0,0.35);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+    transition: transform 0.18s ease, background 0.18s ease, opacity 0.18s ease;
+    opacity: 0.96;
+}
+
+.placeholder-load-cell:hover::before {
+    transform: translate(-50%, -50%) scale(0.94);
+    background: rgba(0,0,0,0.5);
+}
+
+tbody tr:hover {
+    background: rgba(255,255,255,0.14);
+    transform: translateY(-1px);
+}
+
+/* 合併費用Total表頭，內容拆分兩欄 */
+th.total-header {
+    text-align: center;
+}
+
+td.total-value {
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+td.salary-value { /* 月薪數字與 Total 一致 */
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+/* 週日列深灰底 */
+tr.sunday, .sunday-row td {
+    background: rgba(0,0,0,0.52);
+    color: #fff;
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+}
+
+/* 膠囊樣式 */
+.capsule {
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    border: 1px solid rgba(255,255,255,0.35);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.capsule.green {
+    background: linear-gradient(135deg,
+        rgba(160,231,160,0.9),
+        rgba(160,231,160,0.6)
+    );
+    color: #0f2a0f;
+    border-color: rgba(160,231,160,0.9);
+}
+
+.capsule.orange {
+    background: linear-gradient(135deg,
+        rgba(255,200,124,0.9),
+        rgba(255,200,124,0.6)
+    );
+    color: #4a2c07;
+    border-color: rgba(255,200,124,0.9);
+}
+
+.capsule.gray {
+    background: linear-gradient(135deg,
+        rgba(224,224,224,0.9),
+        rgba(224,224,224,0.5)
+    );
+    color: #111;
+    border-color: rgba(224,224,224,0.9);
+}
+
+/* OT 與總計字體加粗 */
+.ot-value { font-weight: bold; font-size: 1rem; }
+.total-value { font-weight: bold; font-size: 1rem; }
+
+/* Dashboard 專用數值膠囊 */
+.dashboard-value {
+    font-weight: bold;
+    font-size: 1rem;
+    display: inline-block;
+    transform-origin: center bottom;
+}
+.detail-row > td {
+    padding: 0;
+    border-bottom: none;
+    background: rgba(230,230,230,0.95); /* 子清單淺灰底 */
+}
+
+.detail-wrapper {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px 12px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: max-height 0.22s ease, opacity 0.22s ease, transform 0.22s ease;
+    justify-content: space-between;
+}
+
+.detail-row.open .detail-wrapper {
+    max-height: 200px;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 讓 label 與膠囊改成左右排列 */
+.detail-chip {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    flex: 1; /* 平均分配可用寬度 */
+}
+
+/* 子清單內 Travel 左側小 toggle */
+.travel-toggle-inline {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.45);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg,
+        rgba(160,160,160,0.95),
+        rgba(120,120,120,0.85)
+    );
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+    padding: 0;
+}
+
+.travel-toggle-inline.on {
+    background: linear-gradient(135deg,
+        rgba(0,122,255,0.95),
+        rgba(0,122,255,0.75)
+    );
+}
+
+.detail-label {
+    font-size: 0.8rem;
+    opacity: 1;
+    margin-left: 0;
+    color: #191919; 
+}
+
+/* 每列右側刪除小圓點與確認氣泡 */
+.row-delete-wrapper {
+    position: absolute;
+    top: 50%;
+    right: -5px; /* 一半在表格外 */
+    left: auto;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none; /* 由內部按鈕接收事件 */
+}
+
+tr.sunday .row-delete-wrapper,
+.sunday-row .row-delete-wrapper {
+    right: -10px;
+    left: auto;
+}
+
+.row-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    padding: 0;
+    border: none;
+    background: #b4b4b4;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: transparent; /* 隱藏原文字，改用 ::before 顯示 */
+    pointer-events: auto;
+}
+
+.row-dot::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #6d6d6d;
+    display: block;
+}
+
+.row-dot:hover {
+    background: #e53935;
+    transform: scale(3);
+}
+
+.row-dot:hover::before {
+    content: '×';
+    padding-left: 14px;
+    width: auto;
+    height: auto;
+    background: transparent;
+    color: #fff;
+    font-size: 0.4rem;
+    line-height: 1;
+}
+
+/* 刪除確認氣泡 */
+.delete-bubble {
+    position: absolute;
+    top: 50%;
+    right: 26px;
+    transform: translateY(-50%) translateX(8px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 20;
+}
+
+.delete-bubble.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) translateX(0);
+}
+
+.delete-bubble-content {
+    background: rgba(0,0,0,0.82);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    white-space: nowrap;
+}
+
+.delete-bubble-content p {
+    margin: 0 0 6px;
+}
+
+.delete-bubble-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.delete-bubble-actions .delete-confirm,
+.delete-bubble-actions .delete-cancel {
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: none;
+    box-shadow: none;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.delete-bubble-actions .delete-confirm {
+    background: #e53935;
+    color: #fff;
+}
+
+.delete-bubble-actions .delete-cancel {
+    background: rgba(255,255,255,0.16);
+    color: #fff;
+}
+
+.flip {
+    animation: flip-card 0.4s ease;
+}
+
+@keyframes flip-card {
+    0% {
+        transform: rotateX(0deg);
+        opacity: 1;
+    }
+    50% {
+        transform: rotateX(90deg);
+        opacity: 0.2;
+    }
+    100% {
+        transform: rotateX(0deg);
+        opacity: 1;
+    }
+}

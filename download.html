@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>下載歷史加班資料 CSV</title>
+</head>
+<body>
+<h2>下載歷史加班資料 CSV</h2>
+<button id="downloadBtn">下載 CSV</button>
+
+<script>
+const csvContent = `date,weekday,1.67,1.34,1.66,2.67,OT hr SUM,Base per Day,Travel Paid,OT Salary,Total,accumulation,Month SLR,Remark
+2025/10/23,星期四,0,0,0,0,,,,,,,,,
+2025/10/24,星期五,0,0,0,0,,,,,,,,,
+2025/10/25,星期六,0,2,6,4,,,,,,,,,
+2025/10/26,星期日,0,0,0,0,,,,,,,,,
+2025/10/27,星期一,0,2,0,0,,,,,,,,,
+2025/10/28,星期二,0,2,0,0,,,,,,,,,
+2025/10/29,星期三,0,2,0,0,,,,,,,,,
+2025/10/30,星期四,0,2,0,0,,,,,,,,,
+2025/10/31,星期五,2,2,0,0,,,,,,,,,
+2025/11/01,星期六,0,2,6,4,,,,,,,,,
+2025/11/02,星期日,0,0,0,0,,,,,,,,,
+2025/11/03,星期一,0,2,0,0,,,,,,,,,
+2025/11/04,星期二,3,2,0,0,,,,,,,,,
+2025/11/05,星期三,0,2,0,0,,,,,,,,,
+2025/11/06,星期四,0,2,0,0,,,,,,,,,`;
+
+document.getElementById('downloadBtn').addEventListener('click', function() {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'overtime_history.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
