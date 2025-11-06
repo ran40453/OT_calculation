@@ -18,7 +18,7 @@ function getTravelUsdByCountry() {
 
 // 更新計算欄位
 function updateAll(openIndex = null) {
-    const salary = parseFloat(document.getElementById('salary')?.value) || 68000;
+    const salary = parseFloat(document.getElementById('salary')?.value) || 60000;
     const rate   = parseFloat(document.getElementById('usdRate')?.value) || 30.9;
     const travelUsdPerDay = getTravelUsdByCountry();
 
