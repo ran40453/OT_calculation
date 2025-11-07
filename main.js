@@ -583,6 +583,42 @@ if (travelToggleBtn) {
     });
 }
 
-// 初始載入時渲染空表（顯示假表）
-renderTable();
-syncTravelToggleUI();
+// === Google Sheet 相關工具 ===
+const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj1hAmp7tsspkdNR1IlPDBpuNbakKy4GpuhZuygxrPiYDgMv2Q/exec'; // Apps Script 部署網址
+
+async function loadFromSheet() {
+    try {
+        const res = await fetch(SHEET_API_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error('fetch failed');
+        const json = await res.json();
+        const rows = json.data || [];
+
+        tableData = rows.map(row => ({
+            date: row.date,
+            weekday: row.weekday || getWeekdayChar(row.date),
+            v167: Number(row.v167) || 0,
+            v134: Number(row.v134) || 0,
+            v166: Number(row.v166) || 0,
+            v267: Number(row.v267) || 0,
+            base: Number(row.base) || 0,
+            travel: Number(row.travel) || 0,
+            otSalary: Number(row.otSalary) || 0,
+            total: Number(row.total) || 0,
+            remark: row.remark || '',
+            travelEnabled: true   // 或之後你要存這個欄位也可以
+        }));
+
+        updateAll();
+    } catch (err) {
+        console.log('載入 Sheet 失敗，改用空表', err);
+        renderTable();
+        syncTravelToggleUI();
+    }
+}
+// === End Google Sheet 相關工具 ===
+
+// 初始載入：優先讀 Google Sheet，如果失敗就顯示假表
+loadFromSheet().catch(() => {
+    renderTable();
+    syncTravelToggleUI();
+});
