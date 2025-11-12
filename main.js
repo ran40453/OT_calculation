@@ -601,21 +601,34 @@ if (travelToggleBtn) {
 // 2) Google Sheet 發佈 CSV：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj1hAmp7tsspkdNR1IlPDBpuNbakKy4GpuhZuygxrPiYDgMv2Q/exec';
 
-// 若 JSONP 失敗，以 proxy 方式改抓純 JSON（只讀公開資料）
-async function fetchWithFallback(url) {
-    // 直接打（若伺服端已允許 CORS 就會成功）
+// 以「原本前端做法」：先嘗試 JSONP；失敗就直接 fetch 純 JSON（不再使用任何 proxy）
+async function fetchWebExec(url) {
+    // 1) 先嘗試 JSONP
     try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (res.ok) return await res.text();
-    } catch (_) {
-        // ignore；改走 proxy
+        const j = await jsonp(url);
+        return j; // 期待回傳 { data: [...] }
+    } catch (e) {
+        console.warn('[OT] JSONP 失敗，改走直接 fetch：', e);
     }
-    // ★ 修正：使用 r.jina.ai 代理時，必須保留原本的協定（https）
-    //   直接把完整 URL 接在後面，避免把 https 誤換成 http 導致失敗
-    const proxied = 'https://r.jina.ai/' + url;
-    const res2 = await fetch(proxied, { cache: 'no-store' });
-    if (!res2.ok) throw new Error('proxy fetch failed: ' + res2.status);
-    return await res2.text();
+
+    // 2) 直接以 fetch 讀取純 JSON（Apps Script /exec 通常允許 GET）
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('direct fetch failed: ' + res.status);
+    const text = await res.text();
+
+    // 嘗試解析兩種情況：
+    //  a) 純 JSON：{"data":[...]}
+    //  b) JSONP 字串：callback({...});
+    try {
+        return JSON.parse(text);
+    } catch (_) {
+        // 嘗試剝 JSONP 外皮
+        const m = text.match(/^[\s\S]*?\(\s*({[\s\S]*})\s*\)\s*;?\s*$/);
+        if (m) {
+            return JSON.parse(m[1]);
+        }
+        throw new Error('unrecognized response (neither JSON nor JSONP)');
+    }
 }
 
 // JSONP helper：以 <script> 注入避免 CORS
@@ -640,19 +653,15 @@ async function loadFromSheet() {
     try {
         if (!SHEET_URL) throw new Error('未設定資料來源 SHEET_URL');
 
-        // 情況 A：Apps Script /exec（走 JSONP，失敗 fallback 代理）
+        // 情況 A：Apps Script /exec
         if (SHEET_URL.includes('/exec')) {
             let rows = [];
             try {
-                // 先嘗試 JSONP（最快、最乾淨）
-                const json = await jsonp(SHEET_URL);
-                rows = json && json.data ? json.data : [];
-            } catch (e1) {
-                // 若 JSONP 失敗，改走代理抓純 JSON
-                const raw = await fetchWithFallback(SHEET_URL);
-                // Apps Script /exec 預設回 {"data":[...]} 純 JSON
-                const json2 = JSON.parse(raw);
-                rows = json2 && json2.data ? json2.data : [];
+                const payload = await fetchWebExec(SHEET_URL);
+                rows = (payload && payload.data) ? payload.data : [];
+            } catch (e) {
+                console.error('[OT] /exec 載入失敗：', e);
+                throw e; // 進入外層 catch → 顯示假表
             }
 
             tableData = rows.map(row => {
