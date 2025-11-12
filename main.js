@@ -605,6 +605,7 @@ function parseCSV(text) {
 function updateDashboard() {
     let totalOT = 0, totalBase = 0, totalTravel = 0, totalOTSalary = 0, totalCost = 0;
     const monthSalaryMap = {}; // key: 'YYYY-MM' -> 該月月薪，只取一次
+    const travelDays = tableData.length; // ★ 出差天數 = 所有列數
 
     tableData.forEach(entry => {
         totalOT       += (parseFloat(entry.v167) || 0)
@@ -627,6 +628,9 @@ function updateDashboard() {
 
     // 所有月份的月薪加總
     const totalSalary = Object.values(monthSalaryMap).reduce((sum, val) => sum + val, 0);
+
+    // ★ 新增：出差天數（所有列數）
+    setAnimatedNumber(document.getElementById('travelDays'), String(travelDays));
 
     setAnimatedNumber(document.getElementById('totalOT'),        totalOT.toFixed(2));
     setAnimatedNumber(document.getElementById('totalBase'),      Math.round(totalBase));
