@@ -471,6 +471,72 @@ document.getElementById('addRowCard').addEventListener('click', () => {
     document.getElementById('newRemark').value = '';
 });
 
+// === 將目前表格資料整理成可寫回 Sheet 的結構 ===
+function buildSheetPayload() {
+    const headers = ['date','weekday','1.67','1.34','1.66','2.67','OT hr SUM','Base','Travel','OT Salary','Total','Month SLR','Remark'];
+    const rows = tableData.map(entry => ([
+        entry.date || '',
+        entry.weekday || getWeekdayChar(entry.date || ''),
+        Number(entry.v167 || 0),
+        Number(entry.v134 || 0),
+        Number(entry.v166 || 0),
+        Number(entry.v267 || 0),
+        String(entry.otSum || 0),
+        String(entry.base || 0),
+        String(entry.travel || 0),
+        String(entry.otSalary || 0),
+        String(entry.total || 0),
+        String(entry.monthSLR || 0),
+        entry.remark || ''
+    ]));
+    return { headers, rows };
+}
+
+// === 觸發寫回 Google Sheet ===
+// 會優先使用 HtmlService 的 google.script.run.saveOvertimeData(payload)
+// 若非 HtmlService 環境，則嘗試以 POST 傳到 /exec（需伺服端提供 doPost/save handler）
+async function saveToSheet() {
+    const payload = buildSheetPayload();
+
+    // 有 HtmlService（Apps Script 內嵌頁面）→ 直接呼叫伺服端
+    if (window.google && google.script && google.script.run) {
+        return new Promise((resolve, reject) => {
+            const btn = document.getElementById('saveToSheetBtn');
+            if (btn) btn.classList.add('loading');
+
+            google.script.run
+                .withSuccessHandler((res) => {
+                    if (btn) btn.classList.remove('loading');
+                    console.log('[OT] saveOvertimeData OK:', res);
+                    resolve(res);
+                })
+                .withFailureHandler((err) => {
+                    if (btn) btn.classList.remove('loading');
+                    console.error('[OT] saveOvertimeData FAIL:', err);
+                    reject(err);
+                })
+                .saveOvertimeData(payload);
+        });
+    }
+
+    // 非 HtmlService（GitHub Pages 等）→ 嘗試以 POST
+    try {
+        const res = await fetch(SHEET_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            cache: 'no-store'
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json().catch(() => ({}));
+        console.log('[OT] POST save OK:', json);
+        return json;
+    } catch (e) {
+        console.error('[OT] 無法直接 POST 寫回，請於 Apps Script 端提供 doPost/save handler 或改用 /exec?ui=1 啟動 HtmlService：', e);
+        throw e;
+    }
+}
+
 // 匯出 CSV
 document.getElementById('exportCSVCard').addEventListener('click', () => {
     let csv = 'date,weekday,1.67,1.34,1.66,2.67,OT hr SUM,Base,Travel,OT Salary,Total,Month SLR,Remark\n';
@@ -741,6 +807,22 @@ async function loadFromSheet() {
     }
 }
 // === End Google Sheet 相關工具 ===
+
+// 綁定「回傳到 Google Sheet」按鈕（HTML 之後加上 id="saveToSheetBtn" 即可）
+const saveBtn = document.getElementById('saveToSheetBtn');
+if (saveBtn) {
+    saveBtn.addEventListener('click', async () => {
+        try {
+            saveBtn.disabled = true;
+            await saveToSheet();
+        } finally {
+            saveBtn.disabled = false;
+        }
+    });
+} else {
+    // 若按鈕尚未存在，也不報錯；等你之後加上 HTML 後就能啟用
+    console.log('[OT] saveToSheetBtn 尚未加入 HTML，待之後加上即可使用。');
+}
 
 // 初始載入：優先讀 Google Sheet，如果失敗就顯示假表
 loadFromSheet().catch(() => {
