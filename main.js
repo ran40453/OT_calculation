@@ -3,6 +3,9 @@ console.log('[OT] BUILD', window.__BUILD_TAG__);
 let tableData = []; // 所有資料
 let newRowTravelEnabled = true; // 新增列預設是否啟用 Travel 津貼
 
+
+
+
 function getWeekdayChar(dateStr) {
     const date = new Date(dateStr);
     const weekdays = ['日','一','二','三','四','五','六'];
@@ -593,39 +596,38 @@ if (travelToggleBtn) {
     });
 }
 
-// === Google Sheet 相關工具（同時支援 Apps Script JSON 與 Sheet CSV） ===
-// 將下方 SHEET_URL 設為你的資料來源：
-// 1) 若使用 Google Sheet「發佈到網路」的 CSV 連結：
-//    例：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
-// 2) 若使用 Apps Script Web App（/exec）回傳 JSON：
-//    例：'https://script.google.com/macros/s/XXXX/exec'
+// === Google Sheet 相關工具（支援 Apps Script JSONP 與 Sheet CSV） ===
+// 1) Apps Script Web App（/exec）：建議走 JSONP（在 URL 後加 ?callback=... 會自動套用）
+// 2) Google Sheet 發佈 CSV：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj1hAmp7tsspkdNR1IlPDBpuNbakKy4GpuhZuygxrPiYDgMv2Q/exec';
-// 兼容舊版變數名稱，避免因快取或舊檔造成「Sheet CSV URL 未設定」誤判
-const SHEET_CSV_URL = SHEET_URL;
+
+// JSONP helper：以 <script> 注入避免 CORS
+function jsonp(url, cbParam = 'callback') {
+    return new Promise((resolve, reject) => {
+        const cbName = 'gas_cb_' + Date.now() + Math.random().toString(36).slice(2);
+        const cleanup = () => {
+            try { delete window[cbName]; } catch (_) {}
+            if (script && script.parentNode) script.parentNode.removeChild(script);
+        };
+        window[cbName] = (data) => { cleanup(); resolve(data); };
+
+        const sep = url.includes('?') ? '&' : '?';
+        const script = document.createElement('script');
+        script.src = url + sep + cbParam + '=' + cbName;
+        script.onerror = () => { cleanup(); reject(new Error('JSONP load failed')); };
+        document.head.appendChild(script);
+    });
+}
 
 async function loadFromSheet() {
     try {
-        if (!SHEET_URL) {
-            throw new Error('未設定資料來源 SHEET_URL');
-        }
-        console.log('[OT] loadFromSheet fetch =>', SHEET_URL);
-        const res = await fetch(SHEET_URL, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+        if (!SHEET_URL) throw new Error('未設定資料來源 SHEET_URL');
 
-        // 嘗試由 content-type / URL 判斷 CSV 或 JSON
-        const ct = (res.headers.get('content-type') || '').toLowerCase();
-        console.log('[OT] content-type:', ct);
-        const isCSV = ct.includes('text/csv') || SHEET_URL.includes('output=csv');
-        const isAppsScriptJSON = SHEET_URL.includes('/exec') || ct.includes('application/json');
+        // 情況 A：Apps Script /exec（走 JSONP）
+        if (SHEET_URL.includes('/exec')) {
+            const json = await jsonp(SHEET_URL);
+            const rows = json && json.data ? json.data : [];
 
-        if (isCSV) {
-            const text = await res.text();
-            parseCSV(text);
-        } else if (isAppsScriptJSON) {
-            const json = await res.json();
-            const rows = json.data || [];
-
-            // 將 Apps Script 回傳的物件陣列轉成 tableData 內部格式
             tableData = rows.map(row => {
                 // 日期若是 "2025-10-22T17:00:00.000Z" → 取前 10 碼
                 let rawDate = row.date;
@@ -660,43 +662,23 @@ async function loadFromSheet() {
                     travelEnabled: true
                 };
             });
-        } else {
-            // 無法判斷型別時，先以文字嘗試 CSV 解析；失敗再嘗試 JSON
-            const raw = await res.text();
-            try {
-                parseCSV(raw);
-            } catch (_) {
-                try {
-                    const json = JSON.parse(raw);
-                    const rows = json.data || [];
-                    tableData = rows.map(row => {
-                        let rawDate = row.date;
-                        if (typeof rawDate === 'string' && rawDate.includes('T')) {
-                            rawDate = rawDate.slice(0, 10);
-                        }
-                        return {
-                            date: rawDate,
-                            weekday: row.weekday || getWeekdayChar(rawDate),
-                            v167: Number(row.v167 ?? row['1.67'] ?? 0),
-                            v134: Number(row.v134 ?? row['1.34'] ?? 0),
-                            v166: Number(row.v166 ?? row['1.66'] ?? 0),
-                            v267: Number(row.v267 ?? row['2.67'] ?? 0),
-                            base: Number(row.base ?? row.Base ?? 0).toFixed(2),
-                            travel: Number(row.travel ?? row.Travel ?? 0).toFixed(2),
-                            otSalary: Number(row.otSalary ?? row['OT Salary'] ?? 0).toFixed(2),
-                            total: Number(row.total ?? row.Total ?? 0).toFixed(2),
-                            monthSLR: Number(row.monthSLR ?? row['Month SLR'] ?? 0).toFixed(2),
-                            remark: row.remark ?? row.Remark ?? '',
-                            travelEnabled: true
-                        };
-                    });
-                } catch (e2) {
-                    throw new Error('未知資料格式，解析失敗');
-                }
-            }
+
+            updateAll();
+            return;
         }
 
-        updateAll();
+        // 情況 B：Google Sheet CSV
+        if (SHEET_URL.includes('output=csv')) {
+            const res = await fetch(SHEET_URL, { cache: 'no-store' });
+            if (!res.ok) throw new Error('fetch failed: ' + res.status);
+            const text = await res.text();
+            parseCSV(text);
+            updateAll();
+            return;
+        }
+
+        // 都不是就丟錯
+        throw new Error('未知資料來源格式，請提供 /exec 或 ?output=csv');
     } catch (err) {
         console.log('載入 Sheet 失敗，改用空表', err, 'URL=', SHEET_URL);
         renderTable();
