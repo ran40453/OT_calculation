@@ -601,6 +601,21 @@ if (travelToggleBtn) {
 // 2) Google Sheet 發佈 CSV：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj1hAmp7tsspkdNR1IlPDBpuNbakKy4GpuhZuygxrPiYDgMv2Q/exec';
 
+// 若 JSONP 失敗，以 proxy 方式改抓純 JSON（只讀公開資料）
+async function fetchWithFallback(url) {
+    const direct = url;
+    const proxied = 'https://r.jina.ai/http://' + url.replace(/^https?:\/\//, '');
+    // 先嘗試直連（某些情況已允許 CORS）
+    try {
+        const res = await fetch(direct, { cache: 'no-store' });
+        if (res.ok) return await res.text();
+    } catch (_) {}
+    // 失敗則走代理（會回 text/plain）
+    const res2 = await fetch(proxied, { cache: 'no-store' });
+    if (!res2.ok) throw new Error('proxy fetch failed: ' + res2.status);
+    return await res2.text();
+}
+
 // JSONP helper：以 <script> 注入避免 CORS
 function jsonp(url, cbParam = 'callback') {
     return new Promise((resolve, reject) => {
@@ -623,10 +638,20 @@ async function loadFromSheet() {
     try {
         if (!SHEET_URL) throw new Error('未設定資料來源 SHEET_URL');
 
-        // 情況 A：Apps Script /exec（走 JSONP）
+        // 情況 A：Apps Script /exec（走 JSONP，失敗 fallback 代理）
         if (SHEET_URL.includes('/exec')) {
-            const json = await jsonp(SHEET_URL);
-            const rows = json && json.data ? json.data : [];
+            let rows = [];
+            try {
+                // 先嘗試 JSONP（最快、最乾淨）
+                const json = await jsonp(SHEET_URL);
+                rows = json && json.data ? json.data : [];
+            } catch (e1) {
+                // 若 JSONP 失敗，改走代理抓純 JSON
+                const raw = await fetchWithFallback(SHEET_URL);
+                // Apps Script /exec 預設回 {"data":[...]} 純 JSON
+                const json2 = JSON.parse(raw);
+                rows = json2 && json2.data ? json2.data : [];
+            }
 
             tableData = rows.map(row => {
                 // 日期若是 "2025-10-22T17:00:00.000Z" → 取前 10 碼
