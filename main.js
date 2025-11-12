@@ -594,7 +594,7 @@ if (travelToggleBtn) {
 // === Google Sheet 相關工具（使用發佈成 CSV 的連結） ===
 // TODO: 把下面這個網址換成你在 Google Sheet「發佈到網路」後拿到的 CSV 連結
 // 例如：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
-const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1TG9aAty0ShJYhTQiB7yP_S4jcKRj57vOTFy0ZS9fHEk/edit?gid=0#gid=0';
+const SHEET_CSV_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj1hAmp7tsspkdNR1IlPDBpuNbakKy4GpuhZuygxrPiYDgMv2Q/exec';
 
 async function loadFromSheet() {
     try {
