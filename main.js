@@ -603,14 +603,16 @@ const SHEET_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj
 
 // 若 JSONP 失敗，以 proxy 方式改抓純 JSON（只讀公開資料）
 async function fetchWithFallback(url) {
-    const direct = url;
-    const proxied = 'https://r.jina.ai/http://' + url.replace(/^https?:\/\//, '');
-    // 先嘗試直連（某些情況已允許 CORS）
+    // 直接打（若伺服端已允許 CORS 就會成功）
     try {
-        const res = await fetch(direct, { cache: 'no-store' });
+        const res = await fetch(url, { cache: 'no-store' });
         if (res.ok) return await res.text();
-    } catch (_) {}
-    // 失敗則走代理（會回 text/plain）
+    } catch (_) {
+        // ignore；改走 proxy
+    }
+    // ★ 修正：使用 r.jina.ai 代理時，必須保留原本的協定（https）
+    //   直接把完整 URL 接在後面，避免把 https 誤換成 http 導致失敗
+    const proxied = 'https://r.jina.ai/' + url;
     const res2 = await fetch(proxied, { cache: 'no-store' });
     if (!res2.ok) throw new Error('proxy fetch failed: ' + res2.status);
     return await res2.text();
