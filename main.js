@@ -596,37 +596,55 @@ if (travelToggleBtn) {
     });
 }
 
-// === Google Sheet 相關工具（支援 Apps Script JSONP 與 Sheet CSV） ===
-// 1) Apps Script Web App（/exec）：建議走 JSONP（在 URL 後加 ?callback=... 會自動套用）
-// 2) Google Sheet 發佈 CSV：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
+// === Google Sheet 相關工具（同時支援 Apps Script JSON 與 Sheet CSV，含 CORS 備援） ===
+// 將下方 SHEET_URL 設為你的資料來源：
+// 1) 若使用 Google Sheet「發佈到網路」的 CSV 連結：
+//    例：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
+// 2) 若使用 Apps Script Web App（/exec）回傳 JSON：
+//    例：'https://script.google.com/macros/s/XXXX/exec'
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj1hAmp7tsspkdNR1IlPDBpuNbakKy4GpuhZuygxrPiYDgMv2Q/exec';
 
-// JSONP helper：以 <script> 注入避免 CORS
-function jsonp(url, cbParam = 'callback') {
-    return new Promise((resolve, reject) => {
-        const cbName = 'gas_cb_' + Date.now() + Math.random().toString(36).slice(2);
-        const cleanup = () => {
-            try { delete window[cbName]; } catch (_) {}
-            if (script && script.parentNode) script.parentNode.removeChild(script);
-        };
-        window[cbName] = (data) => { cleanup(); resolve(data); };
+// 兼容舊版變數名稱（避免舊檔案誤判）
+const SHEET_CSV_URL = SHEET_URL;
 
-        const sep = url.includes('?') ? '&' : '?';
-        const script = document.createElement('script');
-        script.src = url + sep + cbParam + '=' + cbName;
-        script.onerror = () => { cleanup(); reject(new Error('JSONP load failed')); };
-        document.head.appendChild(script);
-    });
+// 簡易 CORS 備援：抓不到就改走 r.jina.ai 代理（僅 GET，僅公開資料，勿放私密）
+async function fetchWithFallback(url) {
+    try {
+        console.log('[OT] loadFromSheet fetch =>', url);
+        const res = await fetch(url, { cache: 'no-store' });
+        if (res.ok) return res;
+
+        console.warn('[OT] fetch not ok, status=', res.status, 'try proxy...');
+        // 走代理
+        const proxied = 'https://r.jina.ai/http://' + url.replace(/^https?:\/\//, '');
+        console.log('[OT] proxy fetch =>', proxied);
+        return await fetch(proxied, { cache: 'no-store' });
+    } catch (e) {
+        console.warn('[OT] fetch error, try proxy...', e);
+        const proxied = 'https://r.jina.ai/http://' + url.replace(/^https?:\/\//, '');
+        console.log('[OT] proxy fetch =>', proxied);
+        return await fetch(proxied, { cache: 'no-store' });
+    }
 }
 
 async function loadFromSheet() {
     try {
-        if (!SHEET_URL) throw new Error('未設定資料來源 SHEET_URL');
+        if (!SHEET_URL) {
+            throw new Error('未設定資料來源 SHEET_URL');
+        }
 
-        // 情況 A：Apps Script /exec（走 JSONP）
-        if (SHEET_URL.includes('/exec')) {
-            const json = await jsonp(SHEET_URL);
-            const rows = json && json.data ? json.data : [];
+        const res = await fetchWithFallback(SHEET_URL);
+
+        // 有些代理會回 text/plain；直接用 text 取回後依序嘗試 JSON → CSV
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        console.log('[OT] content-type:', ct);
+
+        const raw = await res.text();
+
+        // 1) 先試 JSON（Apps Script /exec）
+        try {
+            const json = JSON.parse(raw);
+            const rows = json.data || [];
 
             tableData = rows.map(row => {
                 // 日期若是 "2025-10-22T17:00:00.000Z" → 取前 10 碼
@@ -665,20 +683,19 @@ async function loadFromSheet() {
 
             updateAll();
             return;
+        } catch (e1) {
+            // 不是 JSON，繼續試 CSV
         }
 
-        // 情況 B：Google Sheet CSV
-        if (SHEET_URL.includes('output=csv')) {
-            const res = await fetch(SHEET_URL, { cache: 'no-store' });
-            if (!res.ok) throw new Error('fetch failed: ' + res.status);
-            const text = await res.text();
-            parseCSV(text);
+        // 2) 再試 CSV（Google Sheet 發佈 CSV）
+        try {
+            parseCSV(raw);
             updateAll();
             return;
+        } catch (e2) {
+            // CSV 也失敗
+            throw new Error('未知資料格式，解析失敗');
         }
-
-        // 都不是就丟錯
-        throw new Error('未知資料來源格式，請提供 /exec 或 ?output=csv');
     } catch (err) {
         console.log('載入 Sheet 失敗，改用空表', err, 'URL=', SHEET_URL);
         renderTable();
