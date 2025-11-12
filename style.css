@@ -350,14 +350,32 @@ thead {
     -webkit-backdrop-filter: blur(22px);
 }
 
-/* 加班總時數使用與表頭相同漸層底色，文字改黑色 */
-#totalOT {
+/* 加班總時數與出差天數使用與表頭相同漸層底色，文字改黑色 */
+#totalOT,
+#travelDays {
     background: linear-gradient(135deg,
         rgba(255,235,59,0.92),
         rgba(160,231,160,0.9),
         rgba(255,200,124,0.9)
     );
     color: #111;
+}
+/* 儲存到 Google Sheet 圓形 icon 按鈕（使用 material icon：雲端） */
+#saveToSheetBtn {
+    align-self: flex-start;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 儲存按鈕內的雲端圖示大小 */
+#saveToSheetBtn .material-symbols-outlined {
+    font-size: 20px;
+    line-height: 1;
 }
 
 th, td {
@@ -717,4 +735,9 @@ tr.sunday .row-delete-wrapper,
         transform: rotateX(0deg);
         opacity: 1;
     }
+}
+/* 若 icon-button 被設定成正方形，統一視覺為圓形 */
+.icon-button[style*="width: 44px"],
+.icon-button[style*="height: 44px"] {
+    border-radius: 999px;
 }
