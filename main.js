@@ -1,5 +1,10 @@
+window.__BUILD_TAG__ = '2025-11-12a';
+console.log('[OT] BUILD', window.__BUILD_TAG__);
 let tableData = []; // 所有資料
 let newRowTravelEnabled = true; // 新增列預設是否啟用 Travel 津貼
+
+
+
 
 function getWeekdayChar(dateStr) {
     const date = new Date(dateStr);
@@ -591,25 +596,146 @@ if (travelToggleBtn) {
     });
 }
 
-// === Google Sheet 相關工具（使用發佈成 CSV 的連結） ===
-// TODO: 把下面這個網址換成你在 Google Sheet「發佈到網路」後拿到的 CSV 連結
-// 例如：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
-const SHEET_CSV_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj1hAmp7tsspkdNR1IlPDBpuNbakKy4GpuhZuygxrPiYDgMv2Q/exec';
+// === Google Sheet 相關工具（支援 Apps Script JSONP 與 Sheet CSV） ===
+// 1) Apps Script Web App（/exec）：建議走 JSONP（在 URL 後加 ?callback=... 會自動套用）
+// 2) Google Sheet 發佈 CSV：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj1hAmp7tsspkdNR1IlPDBpuNbakKy4GpuhZuygxrPiYDgMv2Q/exec';
+
+
+// JSONP helper：以 <script> 注入避免 CORS
+function jsonp(url, cbParam = 'callback') {
+    return new Promise((resolve, reject) => {
+        const cbName = 'gas_cb_' + Date.now() + Math.random().toString(36).slice(2);
+        const cleanup = () => {
+            try { delete window[cbName]; } catch (_) {}
+            if (script && script.parentNode) script.parentNode.removeChild(script);
+        };
+        window[cbName] = (data) => { cleanup(); resolve(data); };
+
+        const sep = url.includes('?') ? '&' : '?';
+        const script = document.createElement('script');
+        script.src = url + sep + cbParam + '=' + cbName;
+        script.onerror = () => { cleanup(); reject(new Error('JSONP load failed')); };
+        document.head.appendChild(script);
+    });
+}
 
 async function loadFromSheet() {
-    try {
-        if (!SHEET_CSV_URL || SHEET_CSV_URL === 'PASTE_YOUR_SHEET_CSV_URL_HERE') {
-            throw new Error('Sheet CSV URL 未設定');
-        }
-        const res = await fetch(SHEET_CSV_URL, { cache: 'no-store' });
-        if (!res.ok) throw new Error('fetch failed');
-        const text = await res.text();
+    // ★ 若在 HtmlService 環境（有 google.script.run），改走 GAS 直呼，完全不使用 fetch/JSONP
+    if (window.google && google.script && google.script.run) {
+        await new Promise((resolve, reject) => {
+            google.script.run
+              .withSuccessHandler(payload => {
+                  try {
+                      const rows = (payload && payload.data) ? payload.data : [];
+                      tableData = rows.map(row => {
+                          let rawDate = row.date;
+                          if (typeof rawDate === 'string' && rawDate.includes('T')) {
+                              rawDate = rawDate.slice(0, 10);
+                          }
+                          const v167 = Number(row.v167 ?? row['1.67'] ?? 0);
+                          const v134 = Number(row.v134 ?? row['1.34'] ?? 0);
+                          const v166 = Number(row.v166 ?? row['1.66'] ?? 0);
+                          const v267 = Number(row.v267 ?? row['2.67'] ?? 0);
 
-        // 直接沿用現有的 CSV 解析邏輯
-        parseCSV(text);
-        updateAll();
+                          const base     = Number(row.base     ?? row.Base        ?? 0);
+                          const travel   = Number(row.travel   ?? row.Travel      ?? 0);
+                          const otSalary = Number(row.otSalary ?? row['OT Salary'] ?? 0);
+                          const total    = Number(row.total    ?? row.Total       ?? 0);
+                          const monthSLR = Number(row.monthSLR ?? row['Month SLR'] ?? 0);
+
+                          return {
+                              date: rawDate,
+                              weekday: row.weekday || getWeekdayChar(rawDate),
+                              v167,
+                              v134,
+                              v166,
+                              v267,
+                              base: base.toFixed(2),
+                              travel: travel.toFixed(2),
+                              otSalary: otSalary.toFixed(2),
+                              total: total.toFixed(2),
+                              monthSLR: monthSLR.toFixed(2),
+                              remark: row.remark ?? row.Remark ?? '',
+                              travelEnabled: true
+                          };
+                      });
+                      updateAll();
+                      resolve();
+                  } catch (err) { reject(err); }
+              })
+              .withFailureHandler(err => reject(err))
+              .getOvertimeData();
+        });
+        return; // 已用 GAS 取回資料
+    }
+    try {
+        if (!SHEET_URL) throw new Error('未設定資料來源 SHEET_URL');
+
+        // 情況 A：Apps Script /exec（只用 JSONP）
+        if (SHEET_URL.includes('/exec')) {
+            let rows = [];
+            try {
+                const payload = await jsonp(SHEET_URL);
+                rows = (payload && payload.data) ? payload.data : [];
+            } catch (e) {
+                console.error('[OT] /exec JSONP 載入失敗：', e);
+                throw e; // 讓外層 catch 顯示假表
+            }
+
+            tableData = rows.map(row => {
+                // 日期若是 "2025-10-22T17:00:00.000Z" → 取前 10 碼
+                let rawDate = row.date;
+                if (typeof rawDate === 'string' && rawDate.includes('T')) {
+                    rawDate = rawDate.slice(0, 10);
+                }
+
+                const v167 = Number(row.v167 ?? row['1.67'] ?? 0);
+                const v134 = Number(row.v134 ?? row['1.34'] ?? 0);
+                const v166 = Number(row.v166 ?? row['1.66'] ?? 0);
+                const v267 = Number(row.v267 ?? row['2.67'] ?? 0);
+
+                const base     = Number(row.base     ?? row.Base        ?? 0);
+                const travel   = Number(row.travel   ?? row.Travel      ?? 0);
+                const otSalary = Number(row.otSalary ?? row['OT Salary'] ?? 0);
+                const total    = Number(row.total    ?? row.Total       ?? 0);
+                const monthSLR = Number(row.monthSLR ?? row['Month SLR'] ?? 0);
+
+                return {
+                    date: rawDate,
+                    weekday: row.weekday || getWeekdayChar(rawDate),
+                    v167,
+                    v134,
+                    v166,
+                    v267,
+                    base: base.toFixed(2),
+                    travel: travel.toFixed(2),
+                    otSalary: otSalary.toFixed(2),
+                    total: total.toFixed(2),
+                    monthSLR: monthSLR.toFixed(2),
+                    remark: row.remark ?? row.Remark ?? '',
+                    travelEnabled: true
+                };
+            });
+
+            updateAll();
+            return;
+        }
+
+        // 情況 B：Google Sheet CSV
+        if (SHEET_URL.includes('output=csv')) {
+            const res = await fetch(SHEET_URL, { cache: 'no-store' });
+            if (!res.ok) throw new Error('fetch failed: ' + res.status);
+            const text = await res.text();
+            parseCSV(text);
+            updateAll();
+            return;
+        }
+
+        // 都不是就丟錯
+        throw new Error('未知資料來源格式，請提供 /exec 或 ?output=csv');
     } catch (err) {
-        console.log('載入 Sheet 失敗，改用空表', err);
+        console.log('載入 Sheet 失敗，改用空表', err, 'URL=', SHEET_URL);
         renderTable();
         syncTravelToggleUI();
     }
