@@ -591,22 +591,105 @@ if (travelToggleBtn) {
     });
 }
 
-// === Google Sheet 相關工具（使用發佈成 CSV 的連結） ===
-// TODO: 把下面這個網址換成你在 Google Sheet「發佈到網路」後拿到的 CSV 連結
-// 例如：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
-const SHEET_CSV_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj1hAmp7tsspkdNR1IlPDBpuNbakKy4GpuhZuygxrPiYDgMv2Q/exec';
+// === Google Sheet 相關工具（同時支援 Apps Script JSON 與 Sheet CSV） ===
+// 將下方 SHEET_URL 設為你的資料來源：
+// 1) 若使用 Google Sheet「發佈到網路」的 CSV 連結：
+//    例：'https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv'
+// 2) 若使用 Apps Script Web App（/exec）回傳 JSON：
+//    例：'https://script.google.com/macros/s/XXXX/exec'
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbybvyOVF_Qj8C9FQ4QaKj1hAmp7tsspkdNR1IlPDBpuNbakKy4GpuhZuygxrPiYDgMv2Q/exec';
 
 async function loadFromSheet() {
     try {
-        if (!SHEET_CSV_URL || SHEET_CSV_URL === 'PASTE_YOUR_SHEET_CSV_URL_HERE') {
-            throw new Error('Sheet CSV URL 未設定');
+        if (!SHEET_URL) {
+            throw new Error('未設定資料來源 SHEET_URL');
         }
-        const res = await fetch(SHEET_CSV_URL, { cache: 'no-store' });
-        if (!res.ok) throw new Error('fetch failed');
-        const text = await res.text();
+        const res = await fetch(SHEET_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
 
-        // 直接沿用現有的 CSV 解析邏輯
-        parseCSV(text);
+        // 嘗試由 content-type / URL 判斷 CSV 或 JSON
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        const isCSV = ct.includes('text/csv') || SHEET_URL.includes('output=csv');
+        const isAppsScriptJSON = SHEET_URL.includes('/exec') || ct.includes('application/json');
+
+        if (isCSV) {
+            const text = await res.text();
+            parseCSV(text);
+        } else if (isAppsScriptJSON) {
+            const json = await res.json();
+            const rows = json.data || [];
+
+            // 將 Apps Script 回傳的物件陣列轉成 tableData 內部格式
+            tableData = rows.map(row => {
+                // 日期若是 "2025-10-22T17:00:00.000Z" → 取前 10 碼
+                let rawDate = row.date;
+                if (typeof rawDate === 'string' && rawDate.includes('T')) {
+                    rawDate = rawDate.slice(0, 10);
+                }
+
+                const v167 = Number(row.v167 ?? row['1.67'] ?? 0);
+                const v134 = Number(row.v134 ?? row['1.34'] ?? 0);
+                const v166 = Number(row.v166 ?? row['1.66'] ?? 0);
+                const v267 = Number(row.v267 ?? row['2.67'] ?? 0);
+
+                const base     = Number(row.base     ?? row.Base        ?? 0);
+                const travel   = Number(row.travel   ?? row.Travel      ?? 0);
+                const otSalary = Number(row.otSalary ?? row['OT Salary'] ?? 0);
+                const total    = Number(row.total    ?? row.Total       ?? 0);
+                const monthSLR = Number(row.monthSLR ?? row['Month SLR'] ?? 0);
+
+                return {
+                    date: rawDate,
+                    weekday: row.weekday || getWeekdayChar(rawDate),
+                    v167,
+                    v134,
+                    v166,
+                    v267,
+                    base: base.toFixed(2),
+                    travel: travel.toFixed(2),
+                    otSalary: otSalary.toFixed(2),
+                    total: total.toFixed(2),
+                    monthSLR: monthSLR.toFixed(2),
+                    remark: row.remark ?? row.Remark ?? '',
+                    travelEnabled: true
+                };
+            });
+        } else {
+            // 無法判斷型別時，先以文字嘗試 CSV 解析；失敗再嘗試 JSON
+            const raw = await res.text();
+            try {
+                parseCSV(raw);
+            } catch (_) {
+                try {
+                    const json = JSON.parse(raw);
+                    const rows = json.data || [];
+                    tableData = rows.map(row => {
+                        let rawDate = row.date;
+                        if (typeof rawDate === 'string' && rawDate.includes('T')) {
+                            rawDate = rawDate.slice(0, 10);
+                        }
+                        return {
+                            date: rawDate,
+                            weekday: row.weekday || getWeekdayChar(rawDate),
+                            v167: Number(row.v167 ?? row['1.67'] ?? 0),
+                            v134: Number(row.v134 ?? row['1.34'] ?? 0),
+                            v166: Number(row.v166 ?? row['1.66'] ?? 0),
+                            v267: Number(row.v267 ?? row['2.67'] ?? 0),
+                            base: Number(row.base ?? row.Base ?? 0).toFixed(2),
+                            travel: Number(row.travel ?? row.Travel ?? 0).toFixed(2),
+                            otSalary: Number(row.otSalary ?? row['OT Salary'] ?? 0).toFixed(2),
+                            total: Number(row.total ?? row.Total ?? 0).toFixed(2),
+                            monthSLR: Number(row.monthSLR ?? row['Month SLR'] ?? 0).toFixed(2),
+                            remark: row.remark ?? row.Remark ?? '',
+                            travelEnabled: true
+                        };
+                    });
+                } catch (e2) {
+                    throw new Error('未知資料格式，解析失敗');
+                }
+            }
+        }
+
         updateAll();
     } catch (err) {
         console.log('載入 Sheet 失敗，改用空表', err);
