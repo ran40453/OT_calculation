@@ -65,18 +65,3 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
-
-function saveOvertimeData(payload) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheets()[0]; // 或 getSheetByName('工作表1')
-  const { headers, rows } = payload || {};
-  if (!headers || !rows) return { ok: false, error: 'bad payload' };
-
-  // 清空 & 重寫（你也可改 append 或只覆蓋資料區）
-  sheet.clearContents();
-  sheet.getRange(1,1,1,headers.length).setValues([headers]);
-  if (rows.length) {
-    sheet.getRange(2,1,rows.length,headers.length).setValues(rows);
-  }
-  return { ok: true, wrote: rows.length };
-}
