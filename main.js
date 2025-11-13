@@ -1,5 +1,6 @@
 window.__BUILD_TAG__ = '2025-11-12a';
 console.log('[OT] BUILD', window.__BUILD_TAG__);
+
 let tableData = []; // 所有資料
 let newRowTravelEnabled = true; // 新增列預設是否啟用 Travel 津貼
 
@@ -30,14 +31,13 @@ function updateAll(openIndex = null) {
     let accum = 0;
     const monthTotals = {}; // key: 'YYYY-MM' -> 該月所有 Total 加總
 
-    // 先跑一遍：算出每列的金額、順便累積每個月份的 Total
+    // 由前端依 salary / rate / travel 設定重新計算
     tableData.forEach(entry => {
-        const otSum = entry.v167 * 1.67
-                    + entry.v134 * 1.34
-                    + entry.v166 * 1.66
-                    + entry.v267 * 2.67;
+        const otSum = (Number(entry.v167) || 0) * 1.67
+                    + (Number(entry.v134) || 0) * 1.34
+                    + (Number(entry.v166) || 0) * 1.66
+                    + (Number(entry.v267) || 0) * 2.67;
 
-        // 若該列尚未有 travelEnabled 設定，預設為 true
         if (typeof entry.travelEnabled === 'undefined') {
             entry.travelEnabled = true;
         }
@@ -64,15 +64,11 @@ function updateAll(openIndex = null) {
         }
     });
 
-    // 第二遍：依月份回寫「月薪」欄位
+    // 依月份回寫「月薪」欄位（你的邏輯：當月所有 Total 加總 + 整月月薪）
     tableData.forEach(entry => {
         const monthKey = entry.date ? entry.date.slice(0, 7) : '';
         const monthTotal = monthKey ? monthTotals[monthKey] : 0;
-
-        // ✅ 這裡就是你要的邏輯：
-        //    「當月所有 Total 加總」+「整月月薪」
         const monthSLR = salary + monthTotal;
-
         entry.monthSLR = monthSLR.toFixed(2);
     });
 
@@ -223,7 +219,7 @@ function renderTable(openIndex = null) {
                 }
                 entry.date = newVal;
                 entry.weekday = getWeekdayChar(newVal);
-                tableData.sort((a, b) => new Date(a.date) - new Date(b.date));
+                tableData.sort((a, b) => new Date(b.date) - new Date(a.date));
                 updateAll();
             };
 
@@ -724,13 +720,6 @@ async function loadFromSheet() {
                           const v134 = Number(row.v134 ?? row['1.34'] ?? 0);
                           const v166 = Number(row.v166 ?? row['1.66'] ?? 0);
                           const v267 = Number(row.v267 ?? row['2.67'] ?? 0);
-
-                          const base     = Number(row.base     ?? row.Base        ?? 0);
-                          const travel   = Number(row.travel   ?? row.Travel      ?? 0);
-                          const otSalary = Number(row.otSalary ?? row['OT Salary'] ?? 0);
-                          const total    = Number(row.total    ?? row.Total       ?? 0);
-                          const monthSLR = Number(row.monthSLR ?? row['Month SLR'] ?? 0);
-
                           return {
                               date: rawDate,
                               weekday: row.weekday || getWeekdayChar(rawDate),
@@ -738,11 +727,12 @@ async function loadFromSheet() {
                               v134,
                               v166,
                               v267,
-                              base: base.toFixed(2),
-                              travel: travel.toFixed(2),
-                              otSalary: otSalary.toFixed(2),
-                              total: total.toFixed(2),
-                              monthSLR: monthSLR.toFixed(2),
+                              base: (row.base ?? row.Base ?? '').toString(),
+                              travel: (row.travel ?? row.Travel ?? '').toString(),
+                              otSalary: (row.otSalary ?? row['OT Salary'] ?? '').toString(),
+                              total: (row.total ?? row.Total ?? '').toString(),
+                              monthSLR: (row.monthSLR ?? row['Month SLR'] ?? '').toString(),
+                              otSum: (row.otSum ?? row['OT hr SUM'] ?? '').toString(),
                               remark: row.remark ?? row.Remark ?? '',
                               travelEnabled: true
                           };
@@ -784,13 +774,6 @@ async function loadFromSheet() {
                 const v134 = Number(row.v134 ?? row['1.34'] ?? 0);
                 const v166 = Number(row.v166 ?? row['1.66'] ?? 0);
                 const v267 = Number(row.v267 ?? row['2.67'] ?? 0);
-
-                const base     = Number(row.base     ?? row.Base        ?? 0);
-                const travel   = Number(row.travel   ?? row.Travel      ?? 0);
-                const otSalary = Number(row.otSalary ?? row['OT Salary'] ?? 0);
-                const total    = Number(row.total    ?? row.Total       ?? 0);
-                const monthSLR = Number(row.monthSLR ?? row['Month SLR'] ?? 0);
-
                 return {
                     date: rawDate,
                     weekday: row.weekday || getWeekdayChar(rawDate),
@@ -798,11 +781,12 @@ async function loadFromSheet() {
                     v134,
                     v166,
                     v267,
-                    base: base.toFixed(2),
-                    travel: travel.toFixed(2),
-                    otSalary: otSalary.toFixed(2),
-                    total: total.toFixed(2),
-                    monthSLR: monthSLR.toFixed(2),
+                    base: (row.base ?? row.Base ?? '').toString(),
+                    travel: (row.travel ?? row.Travel ?? '').toString(),
+                    otSalary: (row.otSalary ?? row['OT Salary'] ?? '').toString(),
+                    total: (row.total ?? row.Total ?? '').toString(),
+                    monthSLR: (row.monthSLR ?? row['Month SLR'] ?? '').toString(),
+                    otSum: (row.otSum ?? row['OT hr SUM'] ?? '').toString(),
                     remark: row.remark ?? row.Remark ?? '',
                     travelEnabled: true
                 };
