@@ -714,7 +714,16 @@ async function loadFromSheet() {
                       tableData = rows.map(row => {
                           let rawDate = row.date;
                           if (typeof rawDate === 'string' && rawDate.includes('T')) {
-                              rawDate = rawDate.slice(0, 10);
+                              // 將 ISO UTC 字串轉為本地時間後再取日期，避免往前一天
+                              const d = new Date(rawDate);
+                              if (!isNaN(d)) {
+                                  const yyyy = d.getFullYear();
+                                  const mm = String(d.getMonth() + 1).padStart(2, '0');
+                                  const dd = String(d.getDate()).padStart(2, '0');
+                                  rawDate = `${yyyy}-${mm}-${dd}`;
+                              } else {
+                                  rawDate = rawDate.slice(0, 10);
+                              }
                           }
                           const v167 = Number(row.v167 ?? row['1.67'] ?? 0);
                           const v134 = Number(row.v134 ?? row['1.34'] ?? 0);
@@ -767,7 +776,16 @@ async function loadFromSheet() {
                 // 日期若是 "2025-10-22T17:00:00.000Z" → 取前 10 碼
                 let rawDate = row.date;
                 if (typeof rawDate === 'string' && rawDate.includes('T')) {
-                    rawDate = rawDate.slice(0, 10);
+                    // 將 ISO UTC 字串轉為本地時間後再取日期，避免往前一天
+                    const d = new Date(rawDate);
+                    if (!isNaN(d)) {
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth() + 1).padStart(2, '0');
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        rawDate = `${yyyy}-${mm}-${dd}`;
+                    } else {
+                        rawDate = rawDate.slice(0, 10);
+                    }
                 }
 
                 const v167 = Number(row.v167 ?? row['1.67'] ?? 0);
