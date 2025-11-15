@@ -1,68 +1,41 @@
 function doGet(e) {
-  try {
-    // A) ?ui=1 → 直接回 HtmlService（讓 /exec?ui=1 載入 index.html 並用 google.script.run 取數據）
-    if (e && e.parameter && e.parameter.ui === '1') {
-      return HtmlService.createHtmlOutputFromFile('index')
-        .setTitle('OT Calculation');
-    }
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var range = sheet.getDataRange();
+  var values = range.getValues();  // 第一列是標題
 
-    // B) 準備資料（與 getOvertimeData 相同結構）
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheets()[0]; // 如需固定名稱可改 getSheetByName('工作表1')
-    if (!sheet) throw new Error('找不到工作表');
+  var headers = values[0];
+  var dataRows = values.slice(1);
 
-    const values = sheet.getDataRange().getValues();
-    let data = [];
-    if (values && values.length > 1) {
-      const headers = (values[0] || []).map(h => String(h).trim());
-      data = values.slice(1)
-        .filter(row => row && row[0] !== '' && row[0] !== null && row[0] !== undefined)
-        .map(row => {
-          const obj = {};
-          headers.forEach((h, idx) => {
-            let v = row[idx];
-            if (idx === 0) {
-              // 日期正規化：Date 物件 → YYYY-MM-DD；字串含 T → 取前 10 碼
-              if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v)) {
-                const yyyy = v.getFullYear();
-                const mm = String(v.getMonth() + 1).padStart(2, '0');
-                const dd = String(v.getDate()).padStart(2, '0');
-                v = `${yyyy}-${mm}-${dd}`;
-              } else if (typeof v === 'string' && v.includes('T')) {
-                v = v.slice(0, 10);
-              }
-            }
-            obj[h] = v;
-          });
-          return obj;
-        });
-    }
+  var rows = dataRows
+    .filter(function(r) { return r[0]; })  // 沒日期的列略過
+    .map(function(r) {
+      var obj = {};
+      headers.forEach(function(h, i) {
+        obj[String(h)] = r[i];
+      });
+      return obj;
+    });
 
-    const payload = { data };
+  var payload = { data: rows };
+  var json = JSON.stringify(payload);
 
-    // C) 單一 JSONP 參數：僅支援 ?callback=xxx
-    const cb = (e && e.parameter) ? e.parameter.callback : null;
-    if (cb) {
-      const js = `${cb}(${JSON.stringify(payload)})`;
-      return ContentService.createTextOutput(js)
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
+  var output = ContentService.createTextOutput();
 
-    // D) 預設回純 JSON
-    return ContentService.createTextOutput(JSON.stringify(payload))
-      .setMimeType(ContentService.MimeType.JSON);
-
-  } catch (err) {
-    const cb = (e && e.parameter) ? e.parameter.callback : null;
-    const errPayload = { error: String(err && err.message ? err.message : err) };
-    if (cb) {
-      const js = `${cb}(${JSON.stringify(errPayload)})`;
-      return ContentService.createTextOutput(js)
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-    return ContentService.createTextOutput(JSON.stringify(errPayload))
-      .setMimeType(ContentService.MimeType.JSON);
+  // 如果前端有給 callback，就用 JSONP 格式回傳
+  if (e && e.parameter && e.parameter.callback) {
+    var cbName = String(e.parameter.callback);
+    output.setContent(cbName + '(' + json + ');');
+    output.setMimeType(ContentService.MimeType.JAVASCRIPT);
+  } else {
+    // 一般純 JSON
+    output.setContent(json);
+    output.setMimeType(ContentService.MimeType.JSON);
   }
+
+  // 給 GitHub / 其他網域用的 CORS
+  output.setHeader('Access-Control-Allow-Origin', '*');
+
+  return output;
 }
 
 /**
@@ -80,32 +53,53 @@ function saveOvertimeData(payload) {
     if (!payload || !payload.headers || !payload.rows) {
       return { ok: false, error: 'bad payload' };
     }
+
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheets()[0]; // 如需指定請改 getSheetByName('工作表1')
+    var sheet = ss.getSheets()[0];  // 如需指定工作表請改這裡
     if (!sheet) throw new Error('找不到工作表');
 
-    // 全清 & 回寫
     var headers = payload.headers;
-    var rows = payload.rows;
+    var rows    = payload.rows;
 
-    // 避免巨量清空帶走格式，可改成只清內容
     sheet.clearContents();
 
-    // 寫入表頭
     if (headers && headers.length) {
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     }
-    // 寫入資料
     if (rows && rows.length) {
       sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
     }
 
-    // 記錄一下
     Logger.log('[saveOvertimeData] wrote rows = %s', rows ? rows.length : 0);
     return { ok: true, wrote: rows ? rows.length : 0 };
 
   } catch (err) {
     Logger.log('[saveOvertimeData] error: %s', err);
     return { ok: false, error: String(err && err.message ? err.message : err) };
+  }
+}
+
+/**
+ * 讓 GitHub / 本機頁面可以用 POST 寫回加班資料。
+ */
+function doPost(e) {
+  try {
+    var raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
+    var payload = JSON.parse(raw);
+    var result = saveOvertimeData(payload);
+
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*');
+  } catch (err) {
+    var res = {
+      ok: false,
+      error: String(err && err.message ? err.message : err)
+    };
+    return ContentService
+      .createTextOutput(JSON.stringify(res))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*');
   }
 }

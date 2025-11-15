@@ -519,7 +519,7 @@ async function saveToSheet() {
     try {
         const res = await fetch(SHEET_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain' }, // simple request，避免觸發 OPTIONS preflight
             body: JSON.stringify(payload),
             cache: 'no-store'
         });
