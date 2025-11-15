@@ -515,6 +515,15 @@ async function saveToSheet() {
         });
     }
 
+    // 若在 GitHub Pages / 本機等非 Apps Script HtmlService 環境，就不要嘗試跨網域寫回
+    const isExternalHost = !location.hostname.includes('googleusercontent.com')
+                         && !location.hostname.includes('script.google.com');
+    if (isExternalHost) {
+        console.warn('[OT] saveToSheet 僅支援在 Apps Script Web App 內使用，外部網域將略過寫回。');
+        alert('目前這個版本只當作前端試算使用，要寫回 Google Sheet 請從 Apps Script 網頁版本開啟。');
+        return;
+    }
+
     // 非 HtmlService（GitHub Pages 等）→ 嘗試以 POST
     try {
         const res = await fetch(SHEET_URL, {
@@ -704,6 +713,15 @@ async function fetchWebExec(url) {
 }
 
 async function loadFromSheet() {
+    // 若不在 Apps Script HtmlService，且目前 host 不是 script.google.com，就不要硬打 /exec，改用假表＋CSV
+    const isGasHtml = !!(window.google && google.script && google.script.run);
+    const isScriptHost = location.hostname.includes('script.google.com');
+    if (!isGasHtml && !isScriptHost) {
+        console.warn('[OT] 偵測到外部網域（例如 GitHub Pages），略過自動載入 Sheet，改顯示假表。');
+        renderTable();
+        syncTravelToggleUI();
+        return;
+    }
     // ★ 若在 HtmlService 環境（有 google.script.run），改走 GAS 直呼，完全不使用 fetch/JSONP
     if (window.google && google.script && google.script.run) {
         await new Promise((resolve, reject) => {
