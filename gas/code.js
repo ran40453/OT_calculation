@@ -22,34 +22,24 @@ function getOvertimeData() {
 function doGet(e) {
   e = e || {};
   var params = e.parameter || {};
+  var wantsApi = params.api === '1' || params.mode === 'api';
 
-  var wantsApi = params.api === '1' || params.mode === 'api' || params.callback;
-
-  // 🔹 API 模式：回 JSON / JSONP，未來如果真的要外部呼叫可以用
+  // API 給 GitHub / OT_calculation 用
   if (wantsApi) {
-    var payload = getOvertimeData();
+    var payload = getOvertimeData();  // 你原本的讀取邏輯
     var json = JSON.stringify(payload);
-
-    var output = ContentService.createTextOutput();
-
-    if (params.callback) {
-      var cbName = String(params.callback);
-      output.setContent(cbName + '(' + json + ');');
-      output.setMimeType(ContentService.MimeType.JAVASCRIPT);
-    } else {
-      output.setContent(json);
-      output.setMimeType(ContentService.MimeType.JSON);
-    }
-
-    output.setHeader('Access-Control-Allow-Origin', '*');
-    return output;
+    return ContentService
+      .createTextOutput(json)
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*');
   }
 
-  // 🔹 預設：回 HtmlService 畫面（跟 GitHub 一樣的 UI）
-  return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('OT calculation');
+  // 沒帶 api=1 的情況：回 HtmlService（整個 OT 畫面）
+  return HtmlService
+    .createHtmlOutputFromFile('index') // 要跟你的 index.html 檔名一樣
+    .setTitle('OT calculation')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
 }
-
 /**
  * 將前端 payload 寫回試算表
  * payload 結構：
