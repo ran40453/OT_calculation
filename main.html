@@ -1016,6 +1016,19 @@
       const v166 = Number(row.v166 ?? row['1.66'] ?? 0);
       const v267 = Number(row.v267 ?? row['2.67'] ?? 0);
 
+      const baseRaw = row.base ?? row.Base ?? '';
+      const travelRaw = row.travel ?? row.Travel ?? '';
+      const otSalaryRaw = row.otSalary ?? row['OT Salary'] ?? '';
+      const totalRaw = row.total ?? row.Total ?? '';
+      const monthSlrRaw = row.monthSLR ?? row['Month SLR'] ?? '';
+      const otSumRaw = row.otSum ?? row['OT hr SUM'] ?? '';
+      const remarkRaw = row.remark ?? row.Remark ?? '';
+
+      // 依照 Sheet 內存的 Travel 數值決定這一列是否「有出差」
+      // Travel 為 0 或空 → 視為無出差（travelEnabled = false）
+      const travelNum = Number(travelRaw) || 0;
+      const travelEnabled = travelNum > 0;
+
       return {
         date: rawDate,
         weekday: row.weekday || (rawDate ? getWeekdayChar(rawDate) : ''),
@@ -1023,14 +1036,14 @@
         v134,
         v166,
         v267,
-        base: (row.base ?? row.Base ?? '').toString(),
-        travel: (row.travel ?? row.Travel ?? '').toString(),
-        otSalary: (row.otSalary ?? row['OT Salary'] ?? '').toString(),
-        total: (row.total ?? row.Total ?? '').toString(),
-        monthSLR: (row.monthSLR ?? row['Month SLR'] ?? '').toString(),
-        otSum: (row.otSum ?? row['OT hr SUM'] ?? '').toString(),
-        remark: row.remark ?? row.Remark ?? '',
-        travelEnabled: true,
+        base: baseRaw.toString(),
+        travel: travelRaw.toString(),
+        otSalary: otSalaryRaw.toString(),
+        total: totalRaw.toString(),
+        monthSLR: monthSlrRaw.toString(),
+        otSum: otSumRaw.toString(),
+        remark: remarkRaw,
+        travelEnabled,
       };
     });
 

@@ -2,12 +2,14 @@
 html {
     max-width: 100%;
     overflow-x: hidden;
+    margin: 0;
 }
 /* 全局樣式 */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background: #f0f0f5;
     padding: 20px;
+    margin: 0;
     max-width: 100%;
     overflow-x: hidden;
 }
@@ -79,6 +81,7 @@ body {
 .capsule-row .label {
     flex: 1;
     text-align: left; /* 標題靠左 */
+    font-size: 0.9rem; /* Base / Travel / OT 標題字體一致 */
 }
 
 /* 膠囊顏色 */
@@ -157,11 +160,16 @@ button:active,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.85rem;
+    font-size: 1rem;   /* ← 桌面版也放大 */
     line-height: 1;
     cursor: pointer;
     gap: 0;
     color: #000;
+}
+
+/* 桌面版 OT 調整箭頭 icon 放大一級 */
+.ot-arrow .material-symbols-outlined {
+    font-size: 1.4rem;
 }
 
 .ot-arrow:active,
@@ -219,9 +227,13 @@ button:active,
 }
 
 /* 設定區按鈕排列 */
+/* 設定區按鈕排列 */
 .settings-actions {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
     gap: 6px;
 }
 
@@ -233,11 +245,6 @@ button:active,
     padding: 0;
 }
 
-.settings-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
 
 .file-label {
     cursor: pointer;
@@ -347,6 +354,13 @@ table {
     border: 1px solid rgba(255,255,255,0.35);
 }
 
+    /* 表格外層容器（使用 #tableSection 作為可滾動區，讓表頭 sticky 生效） */
+    #tableSection {
+        max-height: calc(100vh - 160px);
+        overflow-y: auto;
+        position: relative;
+    }
+
 thead {
     background: linear-gradient(135deg,
         rgba(255,235,59,0.92),   /* yellow */
@@ -377,6 +391,12 @@ thead {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    background: linear-gradient(135deg,
+        rgba(255,235,59,0.96),
+        rgba(255,235,59,0.8)
+    );
+    color: #000;
+    border-color: rgba(255,235,59,0.9);
 }
 
 /* 儲存按鈕內的雲端圖示大小 */
@@ -390,6 +410,7 @@ th, td {
     text-align: center;
     border-bottom: 1px solid rgba(255,255,255,0.18);
     border-right: none;
+    position: relative; /* 讓刪除按鈕在每個儲存格內定位，避免 Safari 例外行為 */
 }
 
 th {
@@ -401,7 +422,7 @@ th {
 
 thead th {
     position: sticky; /* 標題固定 */
-    top: 60px; /* 頂端預留新增卡片高度，讓標題列不被蓋住 */
+    top: 0; /* 以 #tableSection 捲動容器的頂端為準 */
     z-index: 5;
 }
 
@@ -611,20 +632,16 @@ tr.sunday, .sunday-row td {
 .row-delete-wrapper {
     position: absolute;
     top: 50%;
-    right: -5px; /* 一半在表格外 */
+    right: 2px; /* 保持貼齊儲存格右側，避免被瀏覽器裁切 */
     left: auto;
     transform: translateY(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
     pointer-events: none; /* 由內部按鈕接收事件 */
+    z-index: 15; /* 確保浮在列背景之上 */
 }
 
-tr.sunday .row-delete-wrapper,
-.sunday-row .row-delete-wrapper {
-    right: -10px;
-    left: auto;
-}
 
 .row-dot {
     width: 10px;
@@ -752,7 +769,8 @@ tr.sunday .row-delete-wrapper,
 /* 手機版響應式版面調整 */
 @media (max-width: 1024px) {
     body {
-        padding: 12px;
+        padding: 8px 10px; /* 左右預留安全距離，且左右對稱 */
+        font-size: 16px;
     }
 
     .container {
@@ -770,6 +788,8 @@ tr.sunday .row-delete-wrapper,
     .card,
     .logo-card {
         width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 
     .right-panel {
@@ -777,11 +797,26 @@ tr.sunday .row-delete-wrapper,
         flex: 1;
     }
 
+    /* 手機版：避免內容超出螢幕寬度 */
+    .container,
+    .right-panel,
+    table {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
     /* 新增卡片在手機版不固定在畫面頂部，跟著內容往下 */
     .add-card {
         position: static;
         top: auto;
         margin-top: 4px;
+    }
+
+    /* 手機版：新增列日期輸入欄縮短，避免擠壓其他欄位 */
+    .add-card input[type="date"] {
+        flex: 0 0 130px;
+        max-width: 130px;
+        width: 130px;
     }
 
     /* 手機版顯示「查看加班明細」按鈕 */
