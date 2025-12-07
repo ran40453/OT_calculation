@@ -85,26 +85,31 @@
         </div>
 
 
-        <!-- 輸入設定卡片 -->
-        <div class="card settings-card">
-          <h3>輸入設定</h3>
-          <label>月薪</label>
-          <input type="number" id="salary" value="68000"><br>
-          <label>美元匯率</label>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="number" id="usdRate" value="30.9" style="flex: 1;">
-            <button id="refreshRateOverviewBtn" class="icon-button" style="width: 44px; height: 44px; margin: 0;"
-              title="更新匯率">
-              <span class="material-symbols-outlined">refresh</span>
-            </button>
+        <!-- 輸入設定卡片 (可收合) -->
+        <div class="card settings-card" id="settingsCard">
+          <div class="card-header" onclick="toggleSettingsCard()"
+            style="padding: 16px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; text-align: left;">輸入設定</h3>
+            <span class="material-symbols-outlined card-expand-icon" id="settingsExpandIcon">expand_more</span>
           </div>
-          <label>Travel 國家</label>
-          <select id="travelCountry">
-            <option value="China">China</option>
-            <option value="Vietnam">Vietnam</option>
-            <option value="India">India</option>
-          </select>
-          <div class="settings-actions">
+          <div class="card-body" id="settingsBody" style="display: none; padding-top: 0;">
+            <label>月薪</label>
+            <input type="number" id="salary" value="68000"><br>
+            <label>美元匯率</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="number" id="usdRate" value="30.9" style="flex: 1;">
+              <button id="refreshRateOverviewBtn" class="icon-button" style="width: 44px; height: 44px; margin: 0;"
+                title="更新匯率">
+                <span class="material-symbols-outlined">refresh</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 操作按鈕卡片 (獨立) -->
+        <div class="card actions-card">
+          <div class="settings-actions" style="justify-content: center; gap: 16px;">
             <button id="exportCSVCard" class="icon-button">
               <span class="material-symbols-outlined">save</span>
             </button>
@@ -114,7 +119,6 @@
             <button id="saveToSheetBtn" class="icon-button" aria-label="Save to Google Sheet">
               <span class="material-symbols-outlined">cloud_upload</span>
             </button>
-            <!-- 一鍵補滿日期按鈕（JS/CSS 之後再實作） -->
             <button id="fillMissingDatesBtn" class="icon-button" aria-label="Fill missing dates">
               <span class="material-symbols-outlined">calendar_month</span>
             </button>

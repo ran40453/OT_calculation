@@ -285,6 +285,9 @@
         bubble.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
         bubble.style.opacity = '0';
         bubble.style.pointerEvents = 'none';
+        bubble.style.whiteSpace = 'pre-wrap'; /* Support multiline text */
+        bubble.style.textAlign = 'left';      /* Align text to left for list */
+        bubble.style.lineHeight = '1.5';
 
         if (isError) {
           bubble.style.background = 'rgba(255, 59, 48, 0.9)';
@@ -348,7 +351,7 @@
       }
     }
 
-    // 渲染資料列表 (Material Design 3 Card List with Calendar View)
+    // 渲染資料列表 (Material Design 3 Card List with Calendar View & Month Grouping)
     function renderDataList(openIndex = null) {
       const container = document.getElementById('tableContainer');
       container.innerHTML = '';
@@ -357,15 +360,12 @@
       if (window.innerWidth >= 1024) {
         const header = document.createElement('div');
         header.classList.add('calendar-header');
-        ['Sun', 'Mon', 'Tue', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => { // Corrected: Tue, Wed, Thu, Fri, Sat, Sun
+        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
           const el = document.createElement('div');
           el.classList.add('calendar-weekday-label');
           el.textContent = day;
           header.appendChild(el);
         });
-        // 插入到 container 之前，或者作為 container 的第一個元素？
-        // 由於 container 是 grid，header 應該在 container 外部或作為第一行
-        // 這裡我們把 header 插入到 container 之前 (需確保只插入一次)
         const existingHeader = document.querySelector('.calendar-header');
         if (existingHeader) existingHeader.remove();
         container.parentNode.insertBefore(header, container);
@@ -407,7 +407,98 @@
         return;
       }
 
+      // Sort tableData by Date Descending to ensure grouping works
+      tableData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      let lastMonthKey = '';
+
+      // Pre-calculate Monthly OT Totals
+      const monthlyOTMap = {};
+      tableData.forEach(entry => {
+        const d = new Date(entry.date);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthlyOTMap[key]) monthlyOTMap[key] = 0;
+        monthlyOTMap[key] += Number(entry.total || 0);
+      });
+
+      let currentMonthGroup = null;
+
       tableData.forEach((entry, index) => {
+        // Month Grouping Logic
+        const dateObj = new Date(entry.date);
+        const currentMonthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+
+        if (currentMonthKey !== lastMonthKey) {
+          const monthHeader = document.createElement('div');
+          monthHeader.classList.add('month-header');
+          monthHeader.style.cursor = 'pointer'; // Clickable
+          monthHeader.title = "Click to toggle month view";
+
+          const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+          // Left: Title + Collapse Icon
+          const leftWrapper = document.createElement('div');
+          leftWrapper.style.display = 'flex';
+          leftWrapper.style.alignItems = 'center';
+          leftWrapper.style.gap = '8px';
+
+          const expandIcon = document.createElement('span');
+          expandIcon.classList.add('material-symbols-outlined');
+          expandIcon.textContent = 'expand_more';
+          expandIcon.style.transition = 'transform 0.2s';
+
+          const title = document.createElement('span');
+          title.textContent = `${monthNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+          leftWrapper.appendChild(title);
+          leftWrapper.appendChild(expandIcon);
+
+          // Right: Chips (OT Total + Salary)
+          const rightWrapper = document.createElement('div');
+          rightWrapper.style.display = 'flex';
+          rightWrapper.style.gap = '8px';
+          rightWrapper.style.alignItems = 'center';
+          rightWrapper.style.paddingRight = '12px'; // Extra padding requested
+
+          // 1. Monthly OT Total (Yellow)
+          const otTotalVal = Math.round(monthlyOTMap[currentMonthKey] || 0);
+          const otChip = document.createElement('div');
+          otChip.classList.add('info-chip', 'yellow');
+          otChip.innerHTML = `<span>+${otTotalVal}</span>`;
+
+          // 2. Monthly Salary (Original)
+          const salaryChip = document.createElement('div');
+          salaryChip.classList.add('info-chip', 'salary-chip');
+          salaryChip.style.background = '#fff9c4';
+          salaryChip.style.color = '#5f5200';
+          salaryChip.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1.1rem;">monetization_on</span> <span>${Math.round(entry.monthSLR)}</span>`;
+
+          rightWrapper.appendChild(otChip);
+          rightWrapper.appendChild(salaryChip);
+
+          monthHeader.appendChild(leftWrapper);
+          monthHeader.appendChild(rightWrapper);
+          container.appendChild(monthHeader);
+
+          // Create Group Container
+          const thisMonthGroup = document.createElement('div');
+          thisMonthGroup.classList.add('month-group');
+          thisMonthGroup.style.display = 'contents'; // Default open
+          container.appendChild(thisMonthGroup);
+
+          // Update global tracker for card appending
+          currentMonthGroup = thisMonthGroup;
+
+          // Toggle Logic (Reference thisMonthGroup instead of currentMonthGroup)
+          monthHeader.addEventListener('click', () => {
+            const isHidden = thisMonthGroup.style.display === 'none';
+            thisMonthGroup.style.display = isHidden ? 'contents' : 'none';
+            expandIcon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+          });
+
+          lastMonthKey = currentMonthKey;
+        }
+
         const card = document.createElement('div');
         card.classList.add('data-card');
         if (openIndex === index) card.classList.add('expanded');
@@ -422,17 +513,32 @@
         // --- Header (Card Content) ---
         const header = document.createElement('div');
         header.classList.add('card-header');
+        // Sunday Style Logic (Apply to CARD, not just header)
+        if (dateObj.getDay() === 0) {
+          card.classList.add('sunday');
+        }
 
         // Primary Info: Date & Scoreboard
         const primaryInfo = document.createElement('div');
         primaryInfo.classList.add('card-primary-info');
 
-        const dateEl = document.createElement('div');
-        dateEl.classList.add('card-date');
-        const dateObj = new Date(entry.date);
-        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dateWrapper = document.createElement('div');
+        dateWrapper.classList.add('card-date-wrapper');
+
         const dd = String(dateObj.getDate()).padStart(2, '0');
-        dateEl.textContent = `${mm}/${dd}`;
+
+        const dateDay = document.createElement('span');
+        dateDay.classList.add('date-day');
+        dateDay.textContent = dd;
+
+        const dateWeekday = document.createElement('span');
+        dateWeekday.classList.add('date-weekday');
+        // Map Chinese weekday to English abbreviation for mobile display
+        const weekdayEnMap = { '日': 'Sun', '一': 'Mon', '二': 'Tue', '三': 'Wed', '四': 'Thu', '五': 'Fri', '六': 'Sat' };
+        dateWeekday.textContent = weekdayEnMap[entry.weekday] || entry.weekday;
+
+        dateWrapper.appendChild(dateDay);
+        dateWrapper.appendChild(dateWeekday);
 
         // OT Scoreboard Badge
         const otTotal = (entry.v167 + entry.v134 + entry.v166 + entry.v267);
@@ -450,46 +556,36 @@
 
         scoreboard.textContent = val;
 
-        primaryInfo.appendChild(dateEl);
+        primaryInfo.appendChild(dateWrapper);
         primaryInfo.appendChild(scoreboard);
 
         // Secondary Info: Salary & Daily OT
         const secondaryInfo = document.createElement('div');
         secondaryInfo.classList.add('card-secondary-info');
 
-        // Monthly Salary
-        const salaryChip = document.createElement('div');
-        salaryChip.classList.add('info-chip');
-        salaryChip.innerHTML = `<span class="material-symbols-outlined">monetization_on</span> <span>${Math.round(entry.monthSLR)}</span>`;
 
-        // Highlight first of month
-        const monthKey = entry.date ? entry.date.slice(0, 7) : '';
-        const firstIndex = tableData.findIndex(e => e.date && e.date.slice(0, 7) === monthKey);
-        if (firstIndex === index) {
-          salaryChip.style.background = '#fff9c4'; // Yellow tint
-          salaryChip.style.color = '#5f5200';
-        }
 
         // Daily OT Salary
         const dailyTotalChip = document.createElement('div');
-        dailyTotalChip.classList.add('info-chip', 'yellow'); // Added yellow class
+        dailyTotalChip.classList.add('info-chip', 'yellow', 'daily-total-chip'); // Added yellow class and specific class
+        dailyTotalChip.id = `chip-daily-${index}`;
         dailyTotalChip.innerHTML = `<span>+${Math.round(entry.total)}</span>`;
 
         // Travel Icon
         const travelChip = document.createElement('div');
-        travelChip.classList.add('info-chip');
+        travelChip.classList.add('info-chip', 'travel-chip');
+        travelChip.id = `chip-travel-${index}`;
         const countryMap = { 'Vietnam': 'VN', 'China': 'CN', 'India': 'IN', 'None': '--' };
         const countryCode = countryMap[entry.travelCountry] || '--';
 
         if (entry.travelCountry && entry.travelCountry !== 'None') {
-          travelChip.style.background = 'var(--md-sys-color-primary-container)';
-          travelChip.style.color = 'var(--md-sys-color-on-primary-container)';
+          travelChip.classList.add('active'); // Blue background style
           travelChip.innerHTML = `<span class="material-symbols-outlined">flight</span> <span>${countryCode}</span>`;
         } else {
           travelChip.innerHTML = `<span class="material-symbols-outlined" style="opacity:0.5">flight</span> <span>--</span>`;
         }
 
-        secondaryInfo.appendChild(salaryChip);
+        // secondaryInfo.appendChild(salaryChip); // Removed from card
         secondaryInfo.appendChild(dailyTotalChip);
         secondaryInfo.appendChild(travelChip);
 
@@ -531,11 +627,9 @@
         });
 
         // Travel Toggle (In Submenu)
+        // Mobile Layout: Try to put it inline or below
         const travelToggleRow = document.createElement('div');
-        travelToggleRow.style.marginTop = '12px';
-        travelToggleRow.style.display = 'flex';
-        travelToggleRow.style.alignItems = 'center';
-        travelToggleRow.style.justifyContent = 'space-between';
+        travelToggleRow.classList.add('travel-toggle-row');
 
         const travelLabel = document.createElement('span');
         travelLabel.textContent = 'Travel Location';
@@ -545,7 +639,8 @@
         const travelSelect = document.createElement('div');
         travelSelect.classList.add('capsule');
         travelSelect.style.cursor = 'pointer';
-        travelSelect.textContent = entry.travelCountry || 'None';
+        const countryShortMap = { 'Vietnam': 'VN', 'China': 'CN', 'India': 'IN', 'None': '--' };
+        travelSelect.textContent = countryShortMap[entry.travelCountry] || '--';
         if (entry.travelCountry && entry.travelCountry !== 'None') {
           travelSelect.style.background = 'var(--md-sys-color-primary-container)';
           travelSelect.style.color = 'var(--md-sys-color-on-primary-container)';
@@ -574,18 +669,17 @@
         const actions = document.createElement('div');
         actions.classList.add('card-actions');
 
-        const deleteBtn = document.createElement('button');
-        deleteBtn.classList.add('action-btn', 'delete');
-        deleteBtn.innerHTML = '<span class="material-symbols-outlined">delete</span>';
-        deleteBtn.addEventListener('click', (e) => {
+        const actionBtn = document.createElement('button');
+        actionBtn.classList.add('action-btn', 'delete');
+        actionBtn.innerHTML = '<span class="material-symbols-outlined">delete</span>';
+        actionBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (confirm('Delete this entry?')) {
-            tableData.splice(index, 1);
-            updateAll();
+          if (confirm('確定刪除?')) {
+            deleteEntry(index);
           }
         });
 
-        actions.appendChild(deleteBtn);
+        actions.appendChild(actionBtn);
         footer.appendChild(remark);
         footer.appendChild(actions);
 
@@ -595,14 +689,21 @@
 
         card.appendChild(header);
         card.appendChild(body);
-        container.appendChild(card);
+        // Append to Current Month Group instead of container directly
+        if (currentMonthGroup) {
+          currentMonthGroup.appendChild(card);
+        } else {
+          container.appendChild(card); // Fallback
+        }
 
         // Expansion Logic
         header.addEventListener('click', () => {
-          const isExpanded = card.classList.contains('expanded');
-          document.querySelectorAll('.data-card.expanded').forEach(c => c.classList.remove('expanded'));
-
-          if (!isExpanded) {
+          if (openIndex === index) {
+            openIndex = -1;
+            card.classList.remove('expanded');
+          } else {
+            openIndex = index;
+            document.querySelectorAll('.data-card.expanded').forEach(c => c.classList.remove('expanded'));
             card.classList.add('expanded');
           }
         });
@@ -959,14 +1060,6 @@
       updateAll();
     });
 
-    // Travel 國家下拉選單改變時，重新計算（若尚未建立則略過）
-    const travelCountrySelect = document.getElementById('travelCountry');
-    if (travelCountrySelect) {
-      travelCountrySelect.addEventListener('change', () => {
-        updateAll();
-      });
-    }
-
     // 新增列上的 Travel toggle 按鈕：只控制「新資料預設是否有 Travel」
     const travelToggleBtn = document.getElementById('travelToggle');
     if (travelToggleBtn) {
@@ -1261,6 +1354,55 @@
             dragState = null;
           }
         });
+
+        // Touch Events for Mobile
+        btn.addEventListener('touchstart', (e) => {
+          if (e.cancelable) e.preventDefault();
+          const touch = e.touches[0];
+          dragState = {
+            startY: touch.clientY,
+            lastY: touch.clientY,
+            accumulatedDelta: 0
+          };
+          btn.classList.add('active');
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+          if (!dragState) return;
+          if (e.cancelable) e.preventDefault(); // Prevent scrolling
+
+          const touch = e.touches[0];
+          const deltaY = dragState.lastY - touch.clientY;
+          dragState.lastY = touch.clientY;
+          dragState.accumulatedDelta += deltaY;
+
+          const threshold = 30; // Sensitivity
+          if (Math.abs(dragState.accumulatedDelta) >= threshold) {
+            const steps = Math.floor(Math.abs(dragState.accumulatedDelta) / threshold);
+            const direction = dragState.accumulatedDelta > 0 ? 1 : -1;
+
+            for (let i = 0; i < steps; i++) {
+              newAddCardState[key] = Math.max(0, newAddCardState[key] + direction);
+            }
+
+            // Real-time update
+            btn.textContent = newAddCardState[key].toFixed(1);
+            if (newAddCardState[key] > 0) {
+              btn.classList.add('has-value');
+            } else {
+              btn.classList.remove('has-value');
+            }
+
+            dragState.accumulatedDelta = dragState.accumulatedDelta % threshold;
+          }
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
+          if (dragState) {
+            btn.classList.remove('active');
+            dragState = null;
+          }
+        });
       });
     }
 
@@ -1331,6 +1473,21 @@
       console.log(
         '[OT] saveToSheetBtn 尚未加入 HTML，待之後加上即可使用。'
       );
+    }
+
+    // Settings Card Toggle Logic
+    if (global) {
+      global.toggleSettingsCard = function () {
+        const body = document.getElementById('settingsBody');
+        const icon = document.getElementById('settingsExpandIcon');
+        if (body.style.display === 'none') {
+          body.style.display = 'block';
+          icon.style.transform = 'rotate(180deg)';
+        } else {
+          body.style.display = 'none';
+          icon.style.transform = 'rotate(0deg)';
+        }
+      };
     }
 
     const fillBtn = document.getElementById('fillMissingDatesBtn');

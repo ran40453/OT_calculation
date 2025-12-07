@@ -60,98 +60,75 @@
         overflow-x: hidden;
     }
 
-    /* 分頁導航列 (Sidebar for Desktop) */
+    /* 分頁導航列 (Top Nav for All) */
     .tab-navigation {
         display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding: 20px 16px;
-        background: rgba(245, 247, 250, 0.95);
-        /* 更柔和的背景 */
+        flex-direction: row;
+        justify-content: center;
+        gap: 16px;
+        padding: 4px;
+        /* Ultra transparent */
         backdrop-filter: blur(30px) saturate(180%);
+        /* Strong blur */
         -webkit-backdrop-filter: blur(30px) saturate(180%);
-        border-right: 1px solid rgba(200, 210, 220, 0.3);
-        box-shadow: 2px 0 30px rgba(0, 0, 0, 0.03);
-
-        /* 固定在左側 */
-        position: fixed;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.02);
+        position: sticky;
         top: 0;
-        left: 0;
-        bottom: 0;
-        width: 240px;
         z-index: 1000;
+        width: 100%;
         margin: 0;
         border-radius: 0;
     }
 
-    @media (max-width: 768px) {
-        .tab-navigation {
-            flex-direction: row;
-            position: sticky;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: auto;
-            width: 100%;
-            height: auto;
-            padding: 10px 16px;
-            border-right: none;
-            border-bottom: 1px solid rgba(200, 210, 220, 0.3);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-            background: rgba(255, 255, 255, 0.95);
-            z-index: 1000;
-        }
-    }
-
     .tab-btn {
-        flex: 1;
+        flex: 0 1 auto;
+        /* Allow shrinking/growing but not filling */
+        min-width: 120px;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 6px;
-        padding: 12px 16px;
-        border: none;
-        border-radius: 12px;
-        background: transparent;
-        color: rgba(0, 0, 0, 0.6);
+        padding: 10px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        /* Pill shape */
+        background: rgba(255, 255, 255, 0.2);
+        color: #444;
         font-family: var(--font-system);
         font-weight: 600;
         font-size: 0.9rem;
         cursor: pointer;
-        transition: all var(--duration-normal) var(--easing-standard);
-        position: relative;
-        overflow: hidden;
+        transition: all 0.2s ease;
     }
 
     .tab-btn.active {
-        background: rgba(255, 255, 255, 0.95);
+        background: rgba(255, 255, 255, 0.7);
         color: var(--color-primary);
-        box-shadow: var(--elevation-2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        border-color: rgba(255, 255, 255, 0.5);
     }
 
     .tab-btn:hover:not(.active) {
-        background: rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.3);
         transform: translateY(-1px);
-    }
-
-    .tab-btn:active {
-        transform: translateY(0);
     }
 
     /* Tab 內容區塊 */
     .tab-content {
         display: none;
+        padding-top: 20px;
     }
 
     .tab-content.active {
         display: block;
-        animation: fadeIn var(--duration-normal) var(--easing-decelerate);
+        animation: fadeIn 0.3s ease;
     }
 
     @keyframes fadeIn {
         from {
             opacity: 0;
-            transform: translateY(8px);
+            transform: translateY(10px);
         }
 
         to {
@@ -162,43 +139,71 @@
 
     .container {
         display: flex;
-        gap: 56px;
-        /* 增加左右卡片間距，避免重疊 */
-        align-items: flex-start;
-        /* 左側置頂 */
+        flex-direction: column;
+        /* Stack vertically on mobile, row on desktop if needed */
+        gap: 24px;
+        width: 100%;
+        max-width: 1600px;
+        /* Wider container */
+        margin: 0;
+        /* Remove auto centering to fix 'left whitespace' complaint */
+        padding: 0 24px;
+        /* Add some padding */
+        box-sizing: border-box;
     }
 
-    /* 左側區域 */
+    @media (min-width: 1024px) {
+        .container {
+            flex-direction: row;
+            /* Side by side on large screens */
+            align-items: flex-start;
+            justify-content: flex-start;
+            /* Align left */
+            padding-left: 40px;
+            /* Comfortable left padding */
+        }
+    }
+
+    /* 左側區域 (Dashboard) */
     .left-panel {
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        width: 250px;
-        position: sticky;
-        top: 20px;
-        /* 置頂 */
-        height: fit-content;
+        gap: 16px;
+        width: 100%;
+        max-width: 100%;
+        /* Full width on mobile */
+        flex-shrink: 0;
     }
 
-    /* 卡片樣式 */
+    @media (min-width: 1024px) {
+        .left-panel {
+            position: sticky;
+            top: 100px;
+            max-width: 300px;
+            /* Constrain on desktop */
+        }
+    }
+
+    /* 卡片樣式 (Unified Fluid Glass) */
     .card {
-        width: 250px;
-        padding: 20px;
+        width: 100%;
+        padding: 24px;
         border-radius: 24px;
-        background: rgba(255, 255, 255, 0.14);
-        backdrop-filter: blur(18px) saturate(160%);
-        -webkit-backdrop-filter: blur(18px) saturate(160%);
-        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
-        border: 1px solid rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.65);
+        /* Match .data-card */
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        box-sizing: border-box;
     }
 
     .logo-card {
-        min-height: 30px;
-        /* 高度接近上方新增列 */
-        width: 100%;
+        min-height: 60px;
         display: flex;
         align-items: center;
         justify-content: center;
+        padding: 12px;
     }
 
     .logo-card .logo-image {
@@ -298,66 +303,43 @@
     }
 
     /* OT 上下箭頭：覆蓋一般按鈕樣式，縮小並貼在膠囊左右 */
-    .ot-arrow {
-        width: auto;
-        height: auto;
-        min-width: 0;
-        margin: 0 2px;
+    .ot-btns {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-left: 6px;
+    }
+
+    .ot-btn {
+        width: 20px;
+        height: 20px;
+        font-size: 14px;
         padding: 0;
-        border: none;
-        border-radius: 0;
-        background: transparent;
+        background: rgba(255, 255, 255, 0.3);
+        color: #333;
         box-shadow: none;
-        display: inline-flex;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
-        /* ← 桌面版也放大 */
-        line-height: 1;
-        cursor: pointer;
-        gap: 0;
-        color: #000;
     }
 
-    /* 桌面版 OT 調整箭頭 icon 放大一級 */
-    .ot-arrow .material-symbols-outlined {
-        font-size: 1.4rem;
-    }
-
-    .ot-arrow:active,
-    .ot-arrow:hover {
-        transform: none;
+    .ot-btn:hover {
+        background: rgba(255, 255, 255, 0.8);
         box-shadow: none;
+        transform: translateY(-1px);
     }
 
-    .material-symbols-outlined {
-        font-variation-settings:
-            'FILL' 0,
-            'wght' 400,
-            'GRAD' 0,
-            'opsz' 24;
-        font-size: 1.2rem;
+    /* 隱藏原生數字增減按鈕 */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
     }
 
     /* 輸入設定卡片內的數字輸入框 */
-    .settings-card input[type="number"] {
-        width: 100%;
-        box-sizing: border-box;
-        margin: 4px 0 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.45);
-        background: rgba(207, 207, 207, 0.95);
-        outline: none;
-        color: #111;
-        font-size: 0.9rem;
-    }
-
-    .settings-card input[type="number"]:focus {
-        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.7);
-    }
-
-    /* 輸入設定卡片內的國家下拉選單 */
+    .settings-card input[type="number"],
+    .settings-card input[type="text"],
     .settings-card select {
         width: 100%;
         box-sizing: border-box;
@@ -365,38 +347,54 @@
         padding: 8px 12px;
         border-radius: 999px;
         border: 1px solid rgba(255, 255, 255, 0.45);
-        background: rgba(207, 207, 207, 0.95);
+        background: rgba(255, 255, 255, 0.6);
         outline: none;
         color: #111;
         font-size: 0.9rem;
-        appearance: none;
-        -webkit-appearance: none;
-        -moz-appearance: none;
+        transition: all 0.2s ease;
     }
 
+    .settings-card input:focus,
     .settings-card select:focus {
-        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.7);
+        background: #fff;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
     }
 
-    /* 設定區按鈕排列 */
+    .settings-card label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 4px;
+        display: block;
+    }
+
     /* 設定區按鈕排列 */
     .settings-actions {
         display: flex;
-        flex-direction: row;
-        flex-wrap: nowrap;
-        justify-content: space-between;
+        justify-content: center;
         align-items: center;
-        gap: 6px;
+        gap: 16px;
+        width: 100%;
+    }
+
+    .actions-card {
+        margin-top: 0;
+        /* Align with standard gap */
+        padding: 16px;
+        display: flex;
+        justify-content: center;
     }
 
     /* 設定卡片內的 icon 按鈕，縮成小圓形 */
     .settings-card .icon-button {
-        align-self: flex-start;
         width: 44px;
         height: 44px;
         padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
-
 
     .file-label {
         cursor: pointer;
@@ -413,37 +411,39 @@
         flex-direction: column;
         gap: 10px;
         overflow: visible;
-        /* 讓 thead:sticky 以整個頁面滾動為基準 */
+        width: 100%;
     }
 
 
     /* 新增卡片 - Smart Stepper 統一設計 */
     .add-card-circular {
         display: flex;
-        gap: 8px;
-        align-items: flex-end;
-        justify-content: center;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
         margin-bottom: 10px;
         position: sticky;
         top: 0;
         background: rgba(255, 255, 255, 0.9);
-        padding: 12px;
+        padding: 16px 24px;
         border-radius: 18px;
         z-index: 10;
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.6);
-        flex-wrap: nowrap;
-        overflow-x: auto;
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        box-shadow: var(--glass-shadow);
+        border: var(--glass-border);
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .add-card-item {
+        flex: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 4px;
-        flex-shrink: 0;
+        min-width: 0;
     }
 
     .add-card-item label {
@@ -454,56 +454,64 @@
         white-space: nowrap;
     }
 
-    /* Smart Stepper for Add Card */
+    /* Smart Stepper for Add Card (Override Global Button Styles) */
     .smart-stepper-add {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        border: 2px solid rgba(0, 0, 0, 0.08);
-        background: rgba(255, 255, 255, 0.95);
-        text-align: center;
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: 50% !important;
+        border: 2px solid rgba(0, 0, 0, 0.08) !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        color: #1d1d1f !important;
+
+        /* Flex Alignment */
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+
         font-size: 0.8rem;
         font-weight: 700;
-        color: #1d1d1f;
         outline: none;
         cursor: ns-resize;
         transition: all 0.2s ease;
-        padding: 0;
+        padding: 0 !important;
         user-select: none;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        margin: 0 !important;
     }
 
     .smart-stepper-add:hover {
-        background: rgba(255, 255, 255, 1);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        background: rgba(255, 255, 255, 1) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+        transform: translateY(-1px);
     }
 
     .smart-stepper-add.active {
-        background: var(--color-primary);
-        color: white;
-        border-color: transparent;
+        background: var(--color-primary) !important;
+        color: white !important;
+        border-color: transparent !important;
         transform: scale(1.1);
-        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3) !important;
         cursor: grabbing;
     }
 
     .smart-stepper-add.has-value {
-        background: rgba(255, 255, 255, 1);
-        border-color: rgba(0, 122, 255, 0.3);
+        background: rgba(255, 255, 255, 1) !important;
+        border-color: rgba(0, 122, 255, 0.3) !important;
     }
 
     .smart-stepper-add[data-type="date"] {
-        border-color: rgba(0, 122, 255, 0.2);
+        border-color: rgba(0, 122, 255, 0.2) !important;
     }
 
     .smart-stepper-add[data-type="travel"] {
-        border-color: rgba(255, 149, 0, 0.2);
-        color: var(--color-warning);
+        border-color: rgba(255, 149, 0, 0.2) !important;
+        color: var(--color-warning) !important;
     }
 
     /* 圓形新增按鈕（與其他按鈕同列） */
     .circular-add-btn-round {
-        width: 42px;
-        height: 42px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
         border: none;
         background: linear-gradient(135deg, var(--color-primary) 0%, #5AC8FA 100%);
@@ -515,6 +523,7 @@
         justify-content: center;
         box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
         flex-shrink: 0;
+        margin: 0;
     }
 
     .circular-add-btn-round:hover {
@@ -526,455 +535,6 @@
         transform: scale(0.95);
     }
 
-    .circular-add-btn-round .material-symbols-outlined {
-        font-size: 20px;
-    }
-
-    @media (max-width: 768px) {
-        .add-card-circular {
-            padding: 10px;
-            gap: 6px;
-        }
-    }
-
-
-    /* 扁平新增按鈕 (全寬第二行) */
-    .circular-add-btn-wide {
-        width: 100%;
-        height: 40px;
-        border-radius: 12px;
-        border: none;
-        background: linear-gradient(135deg, var(--color-primary) 0%, #5AC8FA 100%);
-        color: white;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
-        font-size: 0.9rem;
-        font-weight: 600;
-    }
-
-    .circular-add-btn-wide:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.35);
-    }
-
-    .circular-add-btn-wide:active {
-        transform: translateY(0);
-    }
-
-    .circular-add-btn-wide .material-symbols-outlined {
-        font-size: 18px;
-    }
-
-    @media (max-width: 768px) {
-        .add-card-circular {
-            padding: 10px;
-            gap: 10px;
-        }
-
-        .add-card-row-inputs {
-            gap: 6px;
-        }
-    }
-
-    .add-card-row-inputs {
-        display: flex;
-        justify-content: center;
-        align-items: flex-end;
-        gap: 8px;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-    }
-
-    /* 圓形日期輸入 */
-    .circular-date-input {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        border: 2px solid rgba(0, 122, 255, 0.2);
-        background: rgba(255, 255, 255, 0.95);
-        text-align: center;
-        font-size: 0.7rem;
-        font-weight: 600;
-        color: #1d1d1f;
-        outline: none;
-        transition: all 0.2s ease;
-        padding: 0;
-    }
-
-    .circular-date-input:focus {
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
-        background: white;
-    }
-
-    /* 圓形數字輸入 */
-    .circular-number-input {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        border: 2px solid rgba(0, 0, 0, 0.08);
-        background: rgba(255, 255, 255, 0.95);
-        text-align: center;
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: #1d1d1f;
-        outline: none;
-        transition: all 0.2s ease;
-        padding: 0;
-    }
-
-    .circular-number-input:focus {
-        border-color: var(--color-success);
-        box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.1);
-        background: white;
-    }
-
-    /* 圓形下拉選單 */
-    .circular-select {
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        border: 2px solid rgba(255, 149, 0, 0.2);
-        background: rgba(255, 255, 255, 0.95);
-        text-align: center;
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--color-warning);
-        outline: none;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        appearance: none;
-        -webkit-appearance: none;
-        padding: 0;
-    }
-
-    .circular-select:focus {
-        border-color: var(--color-warning);
-        box-shadow: 0 0 0 3px rgba(255, 149, 0, 0.1);
-        background: white;
-    }
-
-    .add-card-row-inputs {
-        gap: 6px;
-    }
-    }
-
-    /* 新增列中的 Travel toggle 按鈕 */
-    #travelToggle {
-        flex: 0 0 40px;
-        width: 40px;
-        height: 40px;
-        padding: 0;
-        border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        font-weight: 600;
-        border: 1px solid rgba(255, 255, 255, 0.45);
-        background: linear-gradient(135deg,
-                rgba(160, 160, 160, 0.95),
-                rgba(120, 120, 120, 0.85));
-        color: #222;
-    }
-
-    /* Travel 開啟狀態：跟新增 (+) 按鈕一樣藍色，動畫沿用全域 button 規則 */
-    #travelToggle.on {
-        background: linear-gradient(135deg,
-                rgba(0, 122, 255, 0.95),
-                rgba(0, 122, 255, 0.75));
-        color: #fff;
-    }
-
-    /* 表格 */
-    table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        margin-top: 10px;
-        background: rgba(255, 255, 255, 0.12);
-        backdrop-filter: blur(18px) saturate(160%);
-        -webkit-backdrop-filter: blur(18px) saturate(160%);
-        border-radius: 24px;
-        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
-        border: 1px solid rgba(255, 255, 255, 0.35);
-    }
-
-    /* 表格外層容器（使用 #tableSection 作為可滾動區，讓表頭 sticky 生效） */
-    #tableSection {
-        max-height: calc(100vh - 160px);
-        overflow-y: auto;
-        position: relative;
-    }
-
-    thead {
-        background: linear-gradient(135deg,
-                rgba(255, 235, 59, 0.92),
-                /* yellow */
-                rgba(160, 231, 160, 0.9),
-                /* green */
-                rgba(255, 200, 124, 0.9)
-                /* orange */
-            );
-        backdrop-filter: blur(22px);
-        -webkit-backdrop-filter: blur(22px);
-    }
-
-    /* 加班總時數與出差天數使用與表頭相同漸層底色，文字改黑色 */
-    #totalOT,
-    #travelDays {
-        background: linear-gradient(135deg,
-                rgba(255, 235, 59, 0.92),
-                rgba(160, 231, 160, 0.9),
-                rgba(255, 200, 124, 0.9));
-        color: #111;
-    }
-
-    /* 儲存到 Google Sheet 圓形 icon 按鈕（使用 material icon：雲端） */
-    #saveToSheetBtn {
-        align-self: flex-start;
-        width: 44px;
-        height: 44px;
-        padding: 0;
-        border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg,
-                rgba(255, 235, 59, 0.96),
-                rgba(255, 235, 59, 0.8));
-        color: #000;
-        border-color: rgba(255, 235, 59, 0.9);
-    }
-
-    /* 儲存按鈕內的雲端圖示大小 */
-    #saveToSheetBtn .material-symbols-outlined {
-        font-size: 20px;
-        line-height: 1;
-    }
-
-    th,
-    td {
-        padding: 10px 12px;
-        text-align: center;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.18);
-        border-right: none;
-        position: relative;
-        /* 讓刪除按鈕在每個儲存格內定位，避免 Safari 例外行為 */
-    }
-
-    th {
-        font-weight: 600;
-        letter-spacing: 0.02em;
-        color: #111;
-        font-size: 0.9rem;
-    }
-
-    thead th {
-        position: sticky;
-        /* 標題固定 */
-        top: 0;
-        /* 以 #tableSection 捲動容器的頂端為準 */
-        z-index: 5;
-    }
-
-    tbody {
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-    }
-
-    tbody tr {
-        transition: background 0.18s ease, transform 0.12s ease;
-        position: relative;
-    }
-
-    /* 尚未載入資料時的占位列 */
-    .placeholder-row td {
-        padding: 16px 12px;
-        background: rgba(255, 255, 255, 0.06);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-    }
-
-    .placeholder-row:last-child td {
-        border-bottom: none;
-    }
-
-    .placeholder-row {
-        transition: background 0.18s ease, transform 0.18s ease;
-    }
-
-    .placeholder-row:hover {
-        background: rgba(255, 255, 255, 0.12);
-        transform: translateY(-1px) scale(1.01);
-    }
-
-    /* 假表上顯示「載入 CSV」提示（置中大字） */
-    .placeholder-load-cell {
-        position: relative;
-        text-align: center;
-        padding: 32px 0;
-        overflow: visible;
-    }
-
-    /* 載入 CSV 膠囊 */
-    .placeholder-pill {
-        display: inline-block;
-        padding: 10px 24px;
-        border-radius: 999px;
-        font-size: 1rem;
-        font-weight: 700;
-        color: #fff;
-        background: rgba(0, 0, 0, 0.35);
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
-        transition: transform 0.18s ease, background 0.18s ease, opacity 0.18s ease;
-        opacity: 0.96;
-    }
-
-    .placeholder-load-cell:hover .placeholder-pill {
-        transform: scale(0.94);
-        background: rgba(0, 0, 0, 0.5);
-    }
-
-    tbody tr:hover {
-        background: rgba(255, 255, 255, 0.14);
-        transform: translateY(-1px);
-    }
-
-    /* 合併費用Total表頭，內容拆分兩欄 */
-    th.total-header {
-        text-align: center;
-    }
-
-    td.total-value {
-        font-weight: bold;
-        font-size: 1rem;
-    }
-
-    td.salary-value {
-        /* 月薪數字與 Total 一致 */
-        font-weight: bold;
-        font-size: 1rem;
-    }
-
-    /* 週日列深灰底 */
-    tr.sunday,
-    .sunday-row td {
-        background: rgba(0, 0, 0, 0.52);
-        color: #fff;
-        backdrop-filter: blur(22px) saturate(180%);
-        -webkit-backdrop-filter: blur(22px) saturate(180%);
-    }
-
-    /* =========================================
-       Material Design 3 Design System
-       ========================================= */
-    :root {
-        /* Color Palette (Material You inspired) */
-        --md-sys-color-surface: #ffffff;
-        --md-sys-color-surface-container: #f0f4f8;
-        /* Light blue-grey tint */
-        --md-sys-color-on-surface: #191c20;
-        --md-sys-color-on-surface-variant: #444746;
-        --md-sys-color-primary: #0061a4;
-        --md-sys-color-on-primary: #ffffff;
-        --md-sys-color-primary-container: #d1e4ff;
-        --md-sys-color-on-primary-container: #001d36;
-        --md-sys-color-secondary-container: #dbe4f0;
-        --md-sys-color-on-secondary-container: #101c2b;
-        --md-sys-color-outline: #747775;
-        --md-sys-color-outline-variant: #c4c7c5;
-
-        /* Elevation */
-        --md-sys-elevation-0: 0px 0px 0px 0px rgba(0, 0, 0, 0);
-        --md-sys-elevation-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
-        --md-sys-elevation-2: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
-
-        /* Shape */
-        --md-sys-shape-corner-medium: 16px;
-        --md-sys-shape-corner-large: 24px;
-        --md-sys-shape-corner-full: 999px;
-
-        /* Typography */
-        --md-sys-typescale-title-medium: 500 1rem/1.5rem 'Inter', sans-serif;
-        --md-sys-typescale-body-medium: 400 0.875rem/1.25rem 'Inter', sans-serif;
-        --md-sys-typescale-body-small: 400 0.75rem/1rem 'Inter', sans-serif;
-        --md-sys-typescale-label-large: 500 0.875rem/1.25rem 'Inter', sans-serif;
-    }
-
-    /* Container Reset */
-    #tableContainer {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding: 16px 0;
-        width: 100%;
-        max-width: 800px;
-        /* Optimal reading width */
-        margin: 0 auto;
-    }
-
-    /* Weekday Header (Desktop Only) */
-    .calendar-header {
-        display: none;
-        /* Hidden on mobile */
-        grid-template-columns: repeat(7, 1fr);
-        gap: 12px;
-        margin-bottom: 8px;
-        padding: 0;
-        /* Match container padding (0) for alignment */
-    }
-
-    .calendar-weekday-label {
-        text-align: center;
-        font: var(--md-sys-typescale-label-large);
-        color: var(--md-sys-color-on-surface-variant);
-        text-transform: uppercase;
-    }
-
-    /* =========================================
-       Data Card Component
-       ========================================= */
-    .data-card {
-        background-color: var(--md-sys-color-surface);
-        border-radius: var(--md-sys-shape-corner-medium);
-        box-shadow: var(--md-sys-elevation-1);
-        padding: 0;
-        /* Inner layout handles padding */
-        overflow: hidden;
-        transition: box-shadow 0.2s ease, transform 0.2s ease;
-        position: relative;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    .data-card:active {
-        box-shadow: var(--md-sys-elevation-2);
-        transform: scale(0.995);
-    }
-
-    /* Card Header (Always Visible) */
-    .card-header {
-        padding: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        cursor: pointer;
-        background: transparent;
-        flex-wrap: wrap;
-        /* Allow wrapping for small screens if needed */
-        gap: 8px;
-    }
-
-    .card-primary-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex: 1;
-    }
 
     .card-date {
         font: var(--md-sys-typescale-title-medium);
@@ -984,20 +544,27 @@
     }
 
     /* Scoreboard Badge */
+    /* Scoreboard Badge */
     .scoreboard-badge {
         background: #000000;
         color: #ffffff;
-        padding: 4px 10px;
+        padding: 2px 6px;
+        /* Reduced padding */
         border-radius: 999px;
         font-family: 'Inter', monospace;
-        /* Monospace for numbers */
         font-weight: 700;
         font-size: 0.9rem;
-        min-width: 40px;
+        min-width: 24px;
+        /* Reduced width */
+        height: 24px;
+        /* Fixed height for circle look */
         text-align: center;
-        display: flex;
+        display: inline-flex;
+        /* Use inline-flex */
         align-items: center;
         justify-content: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        line-height: 1;
     }
 
     /* Scoreboard Colors */
@@ -1039,9 +606,45 @@
         gap: 4px;
         font-size: 0.85rem;
         color: var(--md-sys-color-on-surface-variant);
-        background: var(--md-sys-color-surface-container);
+        background: rgba(255, 255, 255, 0.5);
+        /* Glassy chip */
         padding: 4px 8px;
         border-radius: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Sunday Header Background */
+    /* Sunday Card Background (Whole Card) */
+    .data-card.sunday {
+        background: rgba(235, 235, 235, 0.75) !important;
+        /* Light Gray */
+        backdrop-filter: blur(20px);
+    }
+
+    .data-card.sunday .card-header {
+        background: transparent;
+        /* Remove header specific bg if set */
+    }
+
+    /* Travel Chip Blue Background */
+    .info-chip.travel-chip.active {
+        background: #e3f2fd;
+        /* Light Blue */
+        color: #0d47a1;
+        border-color: rgba(13, 71, 161, 0.2);
+    }
+
+    /* Mobile Chip Layout: Travel Country on new line */
+    @media (max-width: 1023px) {
+        .card-secondary-info {
+            flex-wrap: wrap;
+        }
+
+        .travel-chip {
+            width: 100%;
+            margin-top: 4px;
+            /* Separate from first line */
+        }
     }
 
     /* Daily OT Salary Style */
@@ -1049,6 +652,8 @@
         background: #facc15;
         color: #000000;
         font-weight: 600;
+        border: none;
+        box-shadow: 0 2px 4px rgba(250, 204, 21, 0.3);
     }
 
     .info-chip .material-symbols-outlined {
@@ -1072,10 +677,12 @@
         /* Toggled via JS */
         padding: 0 16px 16px 16px;
         animation: slideDown 0.3s ease forwards;
-        border-top: 1px solid var(--md-sys-color-surface-container);
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
         margin-top: -8px;
         /* Visual tweak */
         padding-top: 16px;
+        background: rgba(255, 255, 255, 0.3);
+        /* Slight tint for body */
     }
 
     .data-card.expanded .card-body {
@@ -1094,18 +701,158 @@
         }
     }
 
-    /* Grid Layout for Hours - Now 2 columns for circular steppers (2x2) */
+    /* Month Header */
+    .month-header {
+        font: var(--md-sys-typescale-title-medium);
+        color: var(--md-sys-color-primary);
+        padding: 16px 8px 8px 8px;
+        /* Match grid gap visual */
+        margin-top: 16px;
+        width: 100%;
+        font-size: 1.2rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+    }
+
+    /* Card Date Wrapper */
+    .card-date-wrapper {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+    }
+
+    .date-day {
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+
+    .date-weekday {
+        font-size: 0.9rem;
+        color: var(--md-sys-color-on-surface-variant);
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    /* Grid Layout for Hours */
+    /* Container Reset */
+    #tableContainer {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 0;
+        width: 100%;
+        max-width: 100%;
+        /* Fill available space */
+        margin: 0;
+        /* Left align */
+        box-sizing: border-box;
+    }
+
+    /* Weekday Header (Desktop Only) - Strict Alignment */
+    .calendar-header {
+        display: none;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 12px;
+        margin: 0 0 8px 0;
+        /* Left align, no bottom margin */
+        padding: 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .calendar-weekday-label {
+        text-align: center;
+        font: var(--md-sys-typescale-label-large);
+        color: var(--md-sys-color-on-surface-variant);
+        text-transform: uppercase;
+        font-weight: 600;
+        opacity: 0.8;
+    }
+
+    /* =========================================
+       Data Card Component (Glass)
+       ========================================= */
+    .data-card {
+        background: rgba(255, 255, 255, 0.65);
+        /* Explicit semi-transparent background */
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-radius: 24px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        padding: 0;
+        overflow: hidden;
+        transition: all 0.2s ease;
+        position: relative;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .data-card:active {
+        box-shadow: var(--md-sys-elevation-2);
+        transform: scale(0.995);
+    }
+
+    /* Card Header (Always Visible) */
+    .card-header {
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        background: transparent;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .card-primary-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+
+    /* Desktop Adaptation */
+    @media (min-width: 1024px) {
+        #tableContainer {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-auto-flow: dense;
+            gap: 12px;
+            max-width: 100%;
+            /* Full width */
+            padding: 0;
+            margin: 0;
+        }
+
+        .calendar-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 12px;
+            max-width: 100%;
+            padding: 0;
+            margin: 0 0 12px 0;
+        }
+
+        .data-card {
+            height: 100%;
+            min-height: 200px;
+            /* Ensure visual presence even if empty */
+        }
+
+        /* ... other desktop styles ... */
+    }
+
+    /* Grid Layout for Hours - Mobile Default: 4 columns (Single Row) */
     .hours-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        /* 2 columns */
-        gap: 12px;
-        margin-bottom: 16px;
+        grid-template-columns: repeat(4, 1fr);
+        /* 4 columns on mobile */
+        gap: 8px;
+        margin-bottom: 12px;
         justify-items: center;
-        max-width: 200px;
-        /* Limit width to keep them close */
-        margin-left: auto;
-        margin-right: auto;
+        width: 100%;
     }
 
     .hour-item {
@@ -1139,6 +886,18 @@
         align-items: center;
         justify-content: center;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        background: #ffffff;
+        /* Solid white for contrast */
+    }
+
+    /* Travel Toggle Row (Mobile) */
+    .travel-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px dashed var(--md-sys-color-outline-variant);
     }
 
     /* Footer Actions */
@@ -1201,12 +960,26 @@
             gap: 12px;
             max-width: 1400px;
             /* Wider for calendar */
+            padding: 0 16px;
+            /* Ensure padding matches header */
         }
 
         .calendar-header {
             display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            /* Sun - Sat */
+            gap: 12px;
             max-width: 1400px;
             margin: 0 auto 12px auto;
+            padding: 0 16px;
+            /* Match container padding */
+        }
+
+        /* Month Header Spanning */
+        .month-header {
+            grid-column: 1 / -1;
+            margin-top: 24px;
+            padding-left: 0;
         }
 
         .data-card {
@@ -1216,6 +989,19 @@
             flex-direction: column;
             height: 100%;
             /* Uniform height */
+        }
+
+        /* Desktop Steppers: 2x2 */
+        .hours-grid {
+            grid-template-columns: repeat(2, 1fr);
+            max-width: 120px;
+            /* Constrain width */
+            margin: 0 auto 12px auto;
+        }
+
+        /* Hide Weekday in Date on Desktop */
+        .date-weekday {
+            display: none;
         }
 
         /* Desktop Card Layout Override */
@@ -1374,16 +1160,18 @@
         color: #191919;
     }
 
-    .detail-value {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: #1d1d1f;
-        padding: 4px 12px;
-        border-radius: 12px;
-        min-height: 28px;
+    .month-header {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--md-sys-color-on-surface);
+        margin: 24px 0 12px;
+        padding-left: 12px;
+        letter-spacing: 0.5px;
+        /* Flex for Salary Chip alignment */
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        justify-content: center;
+        padding-right: 12px;
     }
 
     /* 每列右側刪除小圓點與確認氣泡 */
@@ -1972,8 +1760,8 @@
 
     /* 分頁導航固定頂部 */
     body>.tab-navigation {
-        margin: 20px auto !important;
-        max-width: 400px !important;
+        margin: 2px auto !important;
+        max-width: 800px !important;
         position: sticky;
         top: 20px;
         z-index: 100;
@@ -2308,6 +2096,25 @@
         display: flex;
         flex-direction: column;
         gap: 14px;
+    }
+
+    /* Add Card Circular: Match Fluid Glass Style */
+    .add-card-circular {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.65);
+        /* Match .card */
+        backdrop-filter: blur(20px) saturate(180%);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        padding: 4px 16px;
+        box-sizing: border-box;
+        border-radius: 999px;
+        /* keep circular/pill look */
+        width: 100%;
+        margin-bottom: 24px;
+        transition: all 0.2s ease;
     }
 
     .stat-item {
