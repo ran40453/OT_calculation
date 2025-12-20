@@ -12,27 +12,27 @@ var SPREADSHEET_ID = '1TG9aAty0ShJYhTQiB7yP_S4jcKRj57vOTFy0ZS9fHEk';
 function getExchangeRate(baseCurrency, targetCurrency) {
   baseCurrency = baseCurrency || 'USD';
   targetCurrency = targetCurrency || 'TWD';
-  
+
   // 使用 CacheService 快取匯率（6 小時有效）
   var cache = CacheService.getScriptCache();
   var cacheKey = 'rate_' + baseCurrency + '_' + targetCurrency;
   var cached = cache.get(cacheKey);
-  
+
   if (cached) {
     Logger.log('[getExchangeRate] 使用快取匯率: %s', cached);
     return parseFloat(cached);
   }
-  
+
   try {
     // 呼叫 ExchangeRate-API（免費版，無需 API Key）
     var url = 'https://open.er-api.com/v6/latest/' + baseCurrency;
     var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     var data = JSON.parse(response.getContentText());
-    
+
     if (data.result === 'success' && data.rates && data.rates[targetCurrency]) {
       var rate = data.rates[targetCurrency];
       Logger.log('[getExchangeRate] API 返回匯率: %s', rate);
-      
+
       // 快取 6 小時（21600 秒）
       cache.put(cacheKey, String(rate), 21600);
       return rate;
@@ -42,7 +42,7 @@ function getExchangeRate(baseCurrency, targetCurrency) {
   } catch (err) {
     Logger.log('[getExchangeRate] API 呼叫失敗: %s', err);
   }
-  
+
   // Fallback: 返回預設匯率
   Logger.log('[getExchangeRate] 使用預設匯率 30.9');
   return 30.9;
@@ -138,12 +138,21 @@ function saveOvertimeData(payload) {
     if (!payload || !payload.headers || !payload.rows) {
       return { ok: false, error: 'bad payload' };
     }
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheets()[0];  // 如需指定工作表請改這裡
+    // Attempt to open by ID; fallback to Active Spreadsheet if ID fails or is placeholder
+    var ss;
+    try {
+      ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    } catch (e) {
+      ss = SpreadsheetApp.getActiveSpreadsheet();
+    }
+
+    if (!ss) throw new Error('無法開啟試算表，請確認 SPREADSHEET_ID 是否正確或指令碼是否有權限存取');
+
+    var sheet = ss.getSheets()[0];
     if (!sheet) throw new Error('找不到工作表');
 
     var headers = payload.headers;
-    var rows    = payload.rows;
+    var rows = payload.rows;
 
     sheet.clearContents();
 
@@ -154,8 +163,9 @@ function saveOvertimeData(payload) {
       sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
     }
 
-    Logger.log('[saveOvertimeData] wrote rows = %s', rows ? rows.length : 0);
-    return { ok: true, wrote: rows ? rows.length : 0 };
+    var ssName = ss.getName();
+    Logger.log('[saveOvertimeData] wrote rows = %s to %s', rows ? rows.length : 0, ssName);
+    return { ok: true, wrote: rows ? rows.length : 0, sheetName: ssName };
 
   } catch (err) {
     Logger.log('[saveOvertimeData] error: %s', err);

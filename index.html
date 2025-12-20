@@ -21,33 +21,36 @@
 
   <!-- 分頁導航列（固定顯示） -->
   <!-- 分頁導航列（桌面版為左側邊欄，手機版為頂部導航） -->
-  <nav class="tab-navigation">
-    <div class="nav-logo-area" style="padding: 10px; margin-bottom: 20px; display: none;">
-      <!-- 桌面版可在這裡放 Logo -->
+  <!-- 分頁導航列已移除，改為 Header Toggle -->
+
+  <!-- Global Persistent Header -->
+  <div class="header-row" style="padding: 8px 24px 0 24px; margin-bottom: 0;">
+    <div class="card header-combined-card"
+      style="display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; width: 100%; cursor: default; margin-bottom: 0;">
+
+      <!-- Logo (Left) -->
+      <div id="logoCard" style="display: flex; align-items: center; cursor: pointer; gap: 12px;">
+        <img
+          src="https://static.wixstatic.com/media/f31164_8fb3a217689346059f1c7a5e599fa050~mv2.png/v1/fill/w_282,h_50,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/logoFONT.png"
+          alt="OT Logo" class="logo-image" style="max-height: 32px; object-fit: contain;">
+      </div>
+
+      <!-- View Toggle (Right in Header) -->
+      <button id="viewToggleBtn" aria-label="View Detailed List" class="icon-button"
+        onclick="location.href='#tableSection'" title="查看加班明細"
+        style="background: rgba(0,0,0,0.05); color: #333; border: 1px solid rgba(0,0,0,0.1); box-shadow: none;">
+        <span class="material-symbols-outlined">table_view</span>
+      </button>
     </div>
-    <button class="tab-btn active" data-tab="overview">
-      <span class="material-symbols-outlined">dashboard</span>
-      Overview
-    </button>
-    <button class="tab-btn" data-tab="analytics">
-      <span class="material-symbols-outlined">analytics</span>
-      Analytics
-    </button>
-  </nav>
+  </div>
 
   <!-- Overview Tab (原有內容) -->
   <div class="tab-content active" id="overview-tab">
-    <div class="container">
+    <div class="container" style="padding-top: 16px;">
 
       <!-- 左側區域 -->
       <div class="left-panel">
-
-        <!-- Logo 卡片 -->
-        <div class="card logo-card" onclick="showOtMonthlySummary()" style="cursor:pointer;">
-          <img
-            src="https://static.wixstatic.com/media/f31164_8fb3a217689346059f1c7a5e599fa050~mv2.png/v1/fill/w_282,h_50,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/logoFONT.png"
-            alt="OT Logo" class="logo-image">
-        </div>
+        <!-- Logo 卡片已移至全域 -->
 
         <!-- Dashboard 總計 -->
         <div class="card dashboard">
@@ -92,18 +95,19 @@
             <h3 style="margin: 0; text-align: left;">輸入設定</h3>
             <span class="material-symbols-outlined card-expand-icon" id="settingsExpandIcon">expand_more</span>
           </div>
-          <div class="card-body" id="settingsBody" style="display: none; padding-top: 0;">
-            <label>月薪</label>
-            <input type="number" id="salary" value="68000"><br>
-            <label>美元匯率</label>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <input type="number" id="usdRate" value="30.9" style="flex: 1;">
-              <button id="refreshRateOverviewBtn" class="icon-button" style="width: 44px; height: 44px; margin: 0;"
-                title="更新匯率">
-                <span class="material-symbols-outlined">refresh</span>
-              </button>
+          <div class="expand-wrapper" id="settingsBody">
+            <div class="expand-inner">
+              <label>月薪</label>
+              <input type="number" id="salary" value="68000"><br>
+              <label>美元匯率</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="number" id="usdRate" value="30.9" style="flex: 1;">
+                <button id="refreshRateOverviewBtn" class="icon-button" style="width: 44px; height: 44px; margin: 0;"
+                  title="更新匯率">
+                  <span class="material-symbols-outlined">refresh</span>
+                </button>
+              </div>
             </div>
-
           </div>
         </div>
 
@@ -122,13 +126,16 @@
             <button id="fillMissingDatesBtn" class="icon-button" aria-label="Fill missing dates">
               <span class="material-symbols-outlined">calendar_month</span>
             </button>
+            <button id="fillMissingDatesBtn" class="icon-button" aria-label="Fill missing dates">
+              <span class="material-symbols-outlined">calendar_month</span>
+            </button>
+            <button id="privacyToggleBtn" class="icon-button privacy-btn" onclick="togglePrivacyMode()" title="切換隱私模式">
+              <span class="material-symbols-outlined">visibility</span>
+            </button>
             <input type="file" id="importCSVCard" accept=".csv">
           </div>
         </div>
-        <a class="icon-button mobile-table-toggle" href="#tableSection">
-          <span class="material-symbols-outlined">table_view</span>
-          <span class="mobile-table-toggle-label">查看加班明細</span>
-        </a>
+        <!-- Cleaned up legacy header row -->
 
       </div>
 
@@ -142,24 +149,31 @@
             <button type="button" id="newDate" class="smart-stepper-add" data-type="date">--/--</button>
           </div>
           <div class="add-card-item">
-            <label>1.67</label>
-            <button type="button" id="new167" class="smart-stepper-add" data-key="v167">0.0</button>
+            <label>Hour</label>
+            <button type="button" id="newHour" class="smart-stepper-add" data-type="hour">17</button>
           </div>
           <div class="add-card-item">
-            <label>1.34</label>
-            <button type="button" id="new134" class="smart-stepper-add" data-key="v134">0.0</button>
+            <label>Min</label>
+            <button type="button" id="newMinute" class="smart-stepper-add" data-type="minute">30</button>
           </div>
           <div class="add-card-item">
-            <label>1.66</label>
-            <button type="button" id="new166" class="smart-stepper-add" data-key="v166">0.0</button>
+            <label>Holiday</label>
+            <button type="button" id="newHolidayToggle" class="smart-stepper-add"
+              style="border: none; background: rgba(0,0,0,0.05) !important;">
+              <span class="material-symbols-outlined" style="font-size: 20px;">event_busy</span>
+            </button>
           </div>
           <div class="add-card-item">
-            <label>2.67</label>
-            <button type="button" id="new267" class="smart-stepper-add" data-key="v267">0.0</button>
+            <label>Leave</label>
+            <button type="button" id="newLeaveToggle" class="smart-stepper-add" title="切換請假狀態">
+              <span class="material-symbols-outlined">person</span>
+            </button>
           </div>
           <div class="add-card-item">
             <label>Travel</label>
-            <button type="button" id="newTravelCountry" class="smart-stepper-add" data-type="travel">VN</button>
+            <button type="button" id="newTravelCountry" class="smart-stepper-add" data-type="travel">
+              <span class="material-symbols-outlined" style="font-size: 20px;">flight</span>
+            </button>
           </div>
           <div class="add-card-item">
             <label>&nbsp;</label>
