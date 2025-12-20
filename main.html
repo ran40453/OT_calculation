@@ -667,14 +667,19 @@
 
       let lastMonthKey = '';
 
-      // Pre-calculate Monthly OT Totals
+      // Pre-calculate Monthly Totals
       const monthlyOTMap = {};
-      const monthSalaryMap = {}; // Also need this for the chip
+      const monthlyTravelMap = {}; // New: Trave summary
+      const monthSalaryMap = {};
       tableData.forEach(entry => {
         const d = new Date(entry.date);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
         if (!monthlyOTMap[key]) monthlyOTMap[key] = 0;
-        monthlyOTMap[key] += (Number(entry.otSalary) || 0); // Use otSalary for the chip sum as per user request (amount sum)
+        monthlyOTMap[key] += (Number(entry.otSalary) || 0);
+
+        if (!monthlyTravelMap[key]) monthlyTravelMap[key] = 0;
+        monthlyTravelMap[key] += (Number(entry.travel) || 0);
 
         if (!monthSalaryMap[key] && entry.monthSLR) {
           monthSalaryMap[key] = parseFloat(entry.monthSLR);
@@ -741,19 +746,26 @@
           rightWrapper.style.alignItems = 'center';
           rightWrapper.style.paddingRight = '12px'; // Extra padding requested
 
-          // 1. Monthly OT Total (Yellow)
+          // 1. Monthly Travel Total (Blue)
+          const travelTotalVal = Math.round(monthlyTravelMap[currentMonthKey] || 0);
+          const travelChip = document.createElement('div');
+          travelChip.classList.add('info-chip', 'blue', 'travel-chip');
+          travelChip.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1.1rem;">flight</span> <span class="privacy-hidden">${travelTotalVal}</span>`;
+
+          // 2. Monthly OT Total (Yellow)
           const otTotalVal = Math.round(monthlyOTMap[currentMonthKey] || 0);
           const otChip = document.createElement('div');
           otChip.classList.add('info-chip', 'yellow', 'ot-chip');
-          otChip.innerHTML = `<span class="privacy-hidden">+${otTotalVal}</span>`;
+          otChip.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1.1rem;">more_time</span> <span class="privacy-hidden">+${otTotalVal}</span>`;
 
-          // 2. Monthly Salary (Original)
+          // 3. Monthly Salary (Original)
           const salaryChip = document.createElement('div');
           salaryChip.classList.add('info-chip', 'salary-chip');
           salaryChip.style.background = '#fff9c4';
           salaryChip.style.color = '#5f5200';
           salaryChip.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1.1rem;">monetization_on</span> <span class="privacy-hidden">${Math.round(monthSalaryMap[currentMonthKey] || 0)}</span>`;
 
+          rightWrapper.appendChild(travelChip);
           rightWrapper.appendChild(otChip);
           rightWrapper.appendChild(salaryChip);
 
@@ -1106,7 +1118,7 @@
 
         const holidayIcon = document.createElement('span');
         holidayIcon.classList.add('material-symbols-outlined');
-        holidayIcon.textContent = 'event_busy';
+        holidayIcon.textContent = entry.isHoliday ? 'holiday_village' : 'event_busy';
         holidayIcon.style.fontSize = '24px';
         holidayIcon.style.color = entry.isHoliday ? 'var(--color-warning)' : 'rgba(0,0,0,0.4)';
 
@@ -1135,7 +1147,7 @@
 
         const leaveIcon = document.createElement('span');
         leaveIcon.classList.add('material-symbols-outlined');
-        leaveIcon.textContent = 'person_off';
+        leaveIcon.textContent = entry.isLeave ? 'person_off' : 'person';
         leaveIcon.style.fontSize = '20px'; // Matching scale
         leaveIcon.style.color = entry.isLeave ? '#ba1a1a' : 'rgba(0,0,0,0.4)';
         leaveBtn.appendChild(leaveIcon);
@@ -2462,11 +2474,16 @@
       monthHeaders.forEach(header => {
         const mKey = header.dataset.monthKey;
         if (mKey && monthSums[mKey]) {
+          // Update Travel Chip (Blue)
+          const trvChip = header.querySelector('.travel-chip span:nth-child(2)');
+          if (trvChip) {
+            trvChip.textContent = Math.round(monthSums[mKey].trv).toLocaleString();
+          }
+
           // Update Yellow Chip (OT)
-          const otChip = header.querySelector('.ot-chip span');
+          const otChip = header.querySelector('.ot-chip span:nth-child(2)');
           if (otChip) {
-            otChip.classList.add('privacy-hidden');
-            otChip.textContent = '+' + monthSums[mKey].ot.toFixed(1);
+            otChip.textContent = '+' + Math.round(monthSums[mKey].ot).toLocaleString();
           }
 
           // Update Salary Chip (Month SLR) - assuming structure is icon + text
