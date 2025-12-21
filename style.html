@@ -2848,6 +2848,44 @@
         font-weight: 600;
         cursor: ns-resize;
         text-align: center;
+    }
+
+    /* Modal Sections */
+    .modal-body section h4 {
+        margin: 0 0 12px 0;
+        color: var(--primary);
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .modal-body hr {
+        border: none;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        margin: 20px 0;
+    }
+
+    /* Fixed Travel Chip in Data Card (Compact) */
+    .info-chip.travel-chip {
+        padding: 2px 6px !important;
+        min-width: 32px;
+        justify-content: center;
+        font-size: 0.75rem !important;
+        font-weight: 700;
+        gap: 0;
+    }
+
+    .info-chip.travel-chip span:not(.material-symbols-outlined) {
+        margin: 0;
+    }
+
+    /* Hide flight icon in card chips as requested */
+    .data-card .travel-chip .material-symbols-outlined {
+        display: none;
+    }
+
+    .salary-item .stepper-btn {
         user-select: none;
         height: 40px;
         display: flex;

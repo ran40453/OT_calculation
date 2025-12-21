@@ -349,13 +349,35 @@
         </button>
       </div>
       <div class="modal-body">
-        <div id="salaryList" class="salary-record-list">
-          <!-- 紀錄將由 JS 動態生成 -->
-        </div>
-        <button class="add-salary-btn" onclick="addSalaryRecord()">
-          <span class="material-symbols-outlined">add</span>
-          <span>新增調薪紀錄</span>
-        </button>
+        <section class="salary-section">
+          <h4
+            style="margin: 0 0 12px 0; color: var(--primary); font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined">payments</span> 薪資紀錄
+          </h4>
+          <div id="salaryList" class="salary-record-list">
+            <!-- 紀錄將由 JS 動態生成 -->
+          </div>
+          <button class="add-salary-btn" onclick="addSalaryRecord()">
+            <span class="material-symbols-outlined">add</span>
+            <span>新增調薪紀錄</span>
+          </button>
+        </section>
+
+        <hr style="border: none; border-top: 1px solid rgba(0, 0, 0, 0.05); margin: 24px 0;">
+
+        <section class="travel-rate-section">
+          <h4
+            style="margin: 0 0 12px 0; color: var(--primary); font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined">flight_takeoff</span> 出差費率設定 (USD)
+          </h4>
+          <div id="travelRateList" class="salary-record-list">
+            <!-- 費率將由 JS 動態生成 -->
+          </div>
+          <button class="add-salary-btn" onclick="addTravelRateRecord()">
+            <span class="material-symbols-outlined">add</span>
+            <span>新增出差地區</span>
+          </button>
+        </section>
       </div>
     </div>
   </div>

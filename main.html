@@ -29,12 +29,38 @@
       return `${yyyy}-${mm}-${dd}`;
     }
 
-    // 根據國家代碼取得每日 Travel USD
+    // 根據國家代碼取得每日 Travel USD (Dynamic from localStorage)
     function getTravelUsdByCountry(country) {
       if (!country || country === 'None') return 0;
-      if (country === 'China') return 33;
-      if (country === 'India') return 70;
-      return 40; // Vietnam 預設
+      const rates = getTravelRates();
+      return parseFloat(rates[country]) || 40; // Default to 40 if not found
+    }
+
+    function getTravelRates() {
+      const stored = localStorage.getItem('travelRates');
+      if (stored) return JSON.parse(stored);
+
+      // Default initial rates (China: 250 HKD -> ~32 USD)
+      const defaults = {
+        'Vietnam': 40,
+        'China': 32.05,
+        'India': 75
+      };
+      localStorage.setItem('travelRates', JSON.stringify(defaults));
+      return defaults;
+    }
+
+    function saveTravelRates(rates) {
+      localStorage.setItem('travelRates', JSON.stringify(rates));
+      updateAll();
+    }
+
+    function getCountryAbbr(name) {
+      const map = { 'Vietnam': 'VN', 'China': 'CN', 'India': 'IN', 'None': '--' };
+      if (map[name]) return map[name];
+      if (!name || name === 'None') return '--';
+      // Fallback: take first two letters uppercase
+      return name.slice(0, 2).toUpperCase();
     }
 
     // 更新: 重新計算所有資料，並重新渲染
@@ -850,18 +876,17 @@
         dailyTotalChip.id = `chip-daily-${index}`;
         dailyTotalChip.innerHTML = `<span class="privacy-hidden">+${Math.round(entry.total)}</span>`;
 
-        // Travel Icon
+        // Travel Icon (Compact)
         const travelChip = document.createElement('div');
         travelChip.classList.add('info-chip', 'travel-chip');
         travelChip.id = `chip-travel-${index}`;
-        const countryMap = { 'Vietnam': 'VN', 'China': 'CN', 'India': 'IN', 'None': '--' };
-        const countryCode = countryMap[entry.travelCountry] || '--';
+        const countryCode = getCountryAbbr(entry.travelCountry);
 
         if (entry.travelCountry && entry.travelCountry !== 'None') {
           travelChip.classList.add('active'); // Blue background style
-          travelChip.innerHTML = `<span class="material-symbols-outlined">flight</span> <span>${countryCode}</span>`;
+          travelChip.innerHTML = `<span>${countryCode}</span>`;
         } else {
-          travelChip.innerHTML = `<span class="material-symbols-outlined" style="opacity:0.5">flight</span> <span>--</span>`;
+          travelChip.innerHTML = `<span>--</span>`;
         }
 
         // secondaryInfo.appendChild(salaryChip); // Removed from card
@@ -1150,7 +1175,7 @@
         travelBtn.style.justifyContent = 'center';
         travelBtn.style.cursor = 'pointer';
         travelBtn.style.position = 'relative'; // For badge
-        const travels = ['None', 'Vietnam', 'China', 'India'];
+        const travels = ['None', ...Object.keys(getTravelRates())];
         const countryCodes = { 'Vietnam': 'VN', 'China': 'CN', 'India': 'IN', 'None': '' };
         const isTraveling = entry.travelCountry && entry.travelCountry !== 'None';
         travelBtn.style.background = isTraveling ? 'rgba(0, 122, 255, 0.15)' : 'rgba(0,0,0,0.05)';
@@ -1165,7 +1190,8 @@
         // Badge for Country Code
         if (isTraveling) {
           const badge = document.createElement('span');
-          badge.textContent = countryCodes[entry.travelCountry];
+          const code = countryCodes[entry.travelCountry] || (entry.travelCountry ? entry.travelCountry.slice(0, 2).toUpperCase() : '');
+          badge.textContent = code;
           badge.style.position = 'absolute';
           badge.style.bottom = '4px';
           badge.style.right = '4px';
@@ -1186,7 +1212,9 @@
           const currentIdx = travels.indexOf(entry.travelCountry || 'None');
           const nextIdx = (currentIdx + 1) % travels.length;
           entry.travelCountry = travels[nextIdx];
-          renderDataList(index);
+
+          // Fix: Call updateAll(index) to recalculate travel amount and update UI immediately
+          updateAll(index);
         });
 
         holidayBtn.style.width = '38px';
@@ -1515,6 +1543,12 @@
         if (stats.leave > 0) {
           // Leave: Dark Red
           cell.style.background = '#8B0000';
+        } else if (travel > 0) {
+          // Travel: Sky Blue Shades (Lighter Palette)
+          if (ot >= 4) cell.style.background = '#7ed6f7';
+          else if (ot >= 2) cell.style.background = '#a1e3f9';
+          else if (ot > 0) cell.style.background = '#c4f0fb';
+          else cell.style.background = '#e7fdfd';
         } else if (ot >= 4) {
           // OT >= 4h: Even Darker Green
           cell.style.background = '#004d00';
@@ -1524,9 +1558,6 @@
         } else if (ot > 0 || presence > 0) {
           // Normal Work: Grass Green
           cell.style.background = '#7CFC00';
-        } else if (travel > 0) {
-          // Travel: Business Trip Gray
-          cell.style.background = '#555555';
         } else {
           cell.style.background = '#e0e0e0';
         }
@@ -2595,6 +2626,8 @@
       const modal = document.getElementById('salaryModal');
       modal.classList.add('active');
       renderSalaryList();
+      renderTravelRateList();
+      initDefaultChinaRate();
     };
 
     window.closeSalaryModal = function () {
@@ -2676,6 +2709,105 @@
       delete salaryEditState[index];
       renderSalaryList();
     };
+
+    // --- Travel Rate Logic ---
+    let travelEditState = {}; // country -> { rate }
+
+    function renderTravelRateList() {
+      const list = document.getElementById('travelRateList');
+      if (!list) return;
+      const rates = getTravelRates();
+      list.innerHTML = '';
+
+      Object.keys(rates).forEach(country => {
+        const div = document.createElement('div');
+        div.className = 'salary-item';
+        div.dataset.country = country;
+
+        const isEditing = !!travelEditState[country];
+        const displayRate = isEditing ? travelEditState[country].rate : rates[country];
+
+        div.innerHTML = `
+          <div style="font-weight:600; font-size:0.9rem; padding: 0 8px;">${country}</div>
+          <input type="number" value="${displayRate}" oninput="onTravelRateInput('${country}', this.value)" style="width:100px;">
+          <div class="salary-actions">
+            <span class="material-symbols-outlined btn-v" onclick="confirmTravelRateEdit('${country}')" style="${isEditing ? '' : 'display:none'}">check_circle</span>
+            <span class="material-symbols-outlined btn-x" onclick="cancelTravelRateEdit('${country}')" style="${isEditing ? '' : 'display:none'}">cancel</span>
+            <span class="material-symbols-outlined btn-del" onclick="deleteTravelRate('${country}')" style="${isEditing ? 'display:none' : ''}">delete</span>
+          </div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    window.onTravelRateInput = function (country, val) {
+      const rates = getTravelRates();
+      const rate = parseFloat(val) || 0;
+
+      const itemDiv = document.querySelector(`.salary-item[data-country="${country}"]`);
+      if (!travelEditState[country]) {
+        travelEditState[country] = { rate: rates[country] };
+        if (itemDiv) {
+          itemDiv.querySelector('.btn-v').style.display = '';
+          itemDiv.querySelector('.btn-x').style.display = '';
+          itemDiv.querySelector('.btn-del').style.display = 'none';
+        }
+      }
+      travelEditState[country].rate = rate;
+    };
+
+    window.confirmTravelRateEdit = function (country) {
+      if (!travelEditState[country]) return;
+      const rates = getTravelRates();
+      rates[country] = travelEditState[country].rate;
+      delete travelEditState[country];
+      saveTravelRates(rates);
+      renderTravelRateList();
+      showNotification(`✅ ${country} 費率已更新`);
+    };
+
+    window.cancelTravelRateEdit = function (country) {
+      delete travelEditState[country];
+      renderTravelRateList();
+    };
+
+    window.deleteTravelRate = function (country) {
+      if (!confirm(`確定要刪除 ${country} 的費率嗎？`)) return;
+      const rates = getTravelRates();
+      delete rates[country];
+      saveTravelRates(rates);
+      renderTravelRateList();
+    };
+
+    window.addTravelRateRecord = function () {
+      const country = prompt('請輸入出差地區名稱（例如：USA）:');
+      if (!country) return;
+      const rates = getTravelRates();
+      if (rates[country]) {
+        alert('該地區已存在');
+        return;
+      }
+      rates[country] = 40;
+      saveTravelRates(rates);
+      renderTravelRateList();
+    };
+
+    function initDefaultChinaRate() {
+      const rates = getTravelRates();
+      // Only auto-update if it's the old default values
+      if (rates['China'] === 160.25 || rates['China'] === 32.05) {
+        google.script.run.withSuccessHandler(rate => {
+          if (rate) {
+            const chinaUsd = Math.round(250 * rate * 100) / 100; // 250 HKD
+            const currentRates = getTravelRates();
+            currentRates['China'] = chinaUsd;
+            saveTravelRates(currentRates);
+            renderTravelRateList();
+            console.log(`[OT] China rate updated to ${chinaUsd} USD (250 HKD)`);
+          }
+        }).getExchangeRate('HKD', 'USD');
+      }
+    }
 
     function initSalaryStepperEvents() {
       const modal = document.getElementById('salaryModal');
