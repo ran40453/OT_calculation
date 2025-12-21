@@ -8,11 +8,21 @@
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script id="init-payload" type="application/json"><?!= INIT_DATA_JSON || '{"data":[]}' ?></script>
   <script>
-    // 版本標籤（方便在 console 看到目前版號）
+    // 版本標籤（防止本地環境報錯）
     window.__CW_DEPLOY_TAG = "<?= DEPLOY_TAG ?>";
-    // 從 Apps Script 模板注入的初始加班資料（getOvertimeData 的回傳值）
-    window.__OT_INIT_PAYLOAD__ = <?!= INIT_DATA_JSON ?>;
+    if (window.__CW_DEPLOY_TAG && window.__CW_DEPLOY_TAG.startsWith("<" + "?")) window.__CW_DEPLOY_TAG = "LOCAL_DEV";
+
+    // 從 Apps Script 模板注入的初始加班資料
+    // 使用 JSON script 區塊讀取，避免本地預覽時語法報錯
+    try {
+      const rawPayload = document.getElementById('init-payload').textContent;
+      window.__OT_INIT_PAYLOAD__ = JSON.parse(rawPayload);
+    } catch (e) {
+      console.warn('[OT] 無法讀取或解析初始資料:', e);
+      window.__OT_INIT_PAYLOAD__ = null;
+    }
   </script>
   <?!= include('style'); ?>
 </head>
@@ -52,37 +62,49 @@
       <div class="left-panel">
         <!-- Logo 卡片已移至全域 -->
 
-        <!-- Dashboard 總計 -->
-        <div class="card dashboard">
-          <h3>總計</h3>
-          <div class="capsule-column">
-            <div class="capsule-row">
-              <span class="label">出差天數</span>
-              <span class="capsule black dashboard-value" id="travelDays">0</span>
-            </div>
-            <div class="capsule-row">
-              <span class="label">加班總時數</span>
-              <span class="capsule black" id="totalOT">0</span>
-            </div>
-            <div class="capsule-row">
-              <span class="detail-label">Base</span>
-              <span class="capsule dark-gray" id="totalBase">0</span>
-            </div>
-            <div class="capsule-row">
-              <span class="label">Travel</span>
-              <span class="capsule dark-gray" id="totalTravel">0</span>
-            </div>
-            <div class="capsule-row">
-              <span class="label">OT</span>
-              <span class="capsule dark-gray" id="totalOTSalary">0</span>
-            </div>
-            <div class="capsule-row">
-              <span class="label">費用 Total</span>
-              <span class="capsule black dashboard-value" id="totalCost">0</span>
-            </div>
-            <div class="capsule-row">
-              <span class="label">總收入</span>
-              <span class="capsule yellow dashboard-value" id="totalSalary">0</span>
+        <!-- Dashboard 總計 (可收合) -->
+        <div class="card dashboard-card" id="dashboardCard">
+          <div class="card-header" onclick="toggleDashboardCard()"
+            style="padding: 16px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; text-align: left;">總計</h3>
+            <span class="material-symbols-outlined card-expand-icon" id="dashboardExpandIcon">expand_less</span>
+          </div>
+
+          <div class="expand-wrapper open" id="dashboardBody">
+            <div class="expand-inner">
+              <div class="dashboard-stats-grid">
+                <!-- 群組 1: 次數與時數 -->
+                <div class="dashboard-group">
+                  <div class="stat-row">
+                    <span class="label">出差天數</span>
+                    <span class="capsule black" id="travelDays">0</span>
+                  </div>
+                  <div class="stat-row">
+                    <span class="label">加班總時數</span>
+                    <span class="capsule black" id="totalOT">0</span>
+                  </div>
+                </div>
+
+                <!-- 群組 2: 津貼與加班費 -->
+                <div class="dashboard-group">
+                  <div class="stat-row">
+                    <span class="label">Travel 津貼</span>
+                    <span class="capsule black" id="totalTravel">0</span>
+                  </div>
+                  <div class="stat-row">
+                    <span class="label">OT 加班費</span>
+                    <span class="capsule black" id="totalOTSalary">0</span>
+                  </div>
+                </div>
+
+                <!-- 總計單獨顯示 -->
+                <div class="dashboard-total">
+                  <div class="stat-row total-row">
+                    <span class="label">總收入</span>
+                    <span class="capsule yellow" id="totalCost">0</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -97,8 +119,12 @@
           </div>
           <div class="expand-wrapper" id="settingsBody">
             <div class="expand-inner">
-              <label>月薪</label>
-              <input type="number" id="salary" value="68000"><br>
+              <label>薪資設定</label>
+              <button onclick="openSalaryModal()" class="icon-button"
+                style="width: 100%; border-radius: 12px; margin: 8px 0; gap: 8px;">
+                <span class="material-symbols-outlined">payments</span>
+                <span>薪資調整明細</span>
+              </button>
               <label>美元匯率</label>
               <div style="display: flex; gap: 8px; align-items: center;">
                 <input type="number" id="usdRate" value="30.9" style="flex: 1;">
@@ -254,6 +280,10 @@
               <span class="label">平均月薪</span>
               <span class="value" id="statAvgMonthly">0</span>
             </div>
+            <div class="stat-item highlight-alt">
+              <span class="label">實質時薪 (有效)</span>
+              <span class="value" id="statEffectiveHourly">0</span>
+            </div>
           </div>
         </div>
 
@@ -275,6 +305,14 @@
             <div class="stat-item">
               <span class="label">加班總時數</span>
               <span class="value" id="statOTHours">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">出差補貼佔比</span>
+              <span class="value" id="statTravelRatio">0%</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">加班貢獻度</span>
+              <span class="value" id="statOTImpact">0%</span>
             </div>
           </div>
         </div>
@@ -300,6 +338,27 @@
     </div>
   </div>
   <!-- End of Analytics Tab -->
+
+  <!-- 薪資調整明細彈窗 (Modal) -->
+  <div id="salaryModal" class="modal-overlay">
+    <div class="modal-content glass-window">
+      <div class="modal-header">
+        <h3>薪資調整明細</h3>
+        <button class="icon-button close-btn" onclick="closeSalaryModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="salaryList" class="salary-record-list">
+          <!-- 紀錄將由 JS 動態生成 -->
+        </div>
+        <button class="add-salary-btn" onclick="addSalaryRecord()">
+          <span class="material-symbols-outlined">add</span>
+          <span>新增調薪紀錄</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <?!= include('main'); ?>
 </body>

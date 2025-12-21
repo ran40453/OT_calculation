@@ -9,14 +9,14 @@ var SPREADSHEET_ID = '1TG9aAty0ShJYhTQiB7yP_S4jcKRj57vOTFy0ZS9fHEk';
  * @param {string} targetCurrency - 目標貨幣代碼（例如 'TWD'）
  * @return {number} 匯率數值
  */
-function getExchangeRate(baseCurrency, targetCurrency) {
+function getExchangeRate(baseCurrency, targetCurrency, forceRefresh) {
   baseCurrency = baseCurrency || 'USD';
   targetCurrency = targetCurrency || 'TWD';
 
   // 使用 CacheService 快取匯率（6 小時有效）
   var cache = CacheService.getScriptCache();
   var cacheKey = 'rate_' + baseCurrency + '_' + targetCurrency;
-  var cached = cache.get(cacheKey);
+  var cached = forceRefresh ? null : cache.get(cacheKey);
 
   if (cached) {
     Logger.log('[getExchangeRate] 使用快取匯率: %s', cached);
@@ -25,11 +25,11 @@ function getExchangeRate(baseCurrency, targetCurrency) {
 
   try {
     // 呼叫 ExchangeRate-API（免費版，無需 API Key）
-    var url = 'https://open.er-api.com/v6/latest/' + baseCurrency;
+    var url = 'https://api.exchangerate-api.com/v4/latest/' + baseCurrency;
     var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     var data = JSON.parse(response.getContentText());
 
-    if (data.result === 'success' && data.rates && data.rates[targetCurrency]) {
+    if (data && data.rates && data.rates[targetCurrency]) {
       var rate = data.rates[targetCurrency];
       Logger.log('[getExchangeRate] API 返回匯率: %s', rate);
 
@@ -49,15 +49,45 @@ function getExchangeRate(baseCurrency, targetCurrency) {
 }
 
 function getOvertimeData() {
-  // 一定要先確認這裡的 ID 是你剛剛確認過、真的有 OT 資料的那張 Sheet
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheets()[0];        // 如果不是第一個工作表，再指定你要的名稱
+  var ss;
+  try {
+    // 試圖開啟指定的 ID
+    ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  } catch (e) {
+    Logger.log('[getOvertimeData] 無法開啟 ID 為 %s 的試算表: %s', SPREADSHEET_ID, e);
+    try {
+      // 回退：試圖開啟連結到此腳本的試算表
+      ss = SpreadsheetApp.getActiveSpreadsheet();
+    } catch (e2) {
+      Logger.log('[getOvertimeData] 回退開啟 ActiveSpreadsheet 也失敗: %s', e2);
+    }
+  }
+
+  if (!ss) {
+    Logger.log('[getOvertimeData] 找不到任何可用的試算表，返回空資料');
+    return { data: [] };
+  }
+
+  var sheets = ss.getSheets();
+  var sheet = sheets[0];
+
+  // 嘗試尋找名稱包含「加班」或「加班表」的工作表
+  for (var i = 0; i < sheets.length; i++) {
+    var name = sheets[i].getName();
+    if (name.indexOf('加班') !== -1 || name.indexOf('Sheet1') !== -1) {
+      sheet = sheets[i];
+      break;
+    }
+  }
+
+  Logger.log('[getOvertimeData] 使用工作表: %s', sheet.getName());
   var range = sheet.getDataRange();
-  var values = range.getValues();       // 第一列 = 標題列
+  var values = range.getValues();
 
   if (!values || values.length < 2) {
-    Logger.log('[getOvertimeData] no data rows, returning { data: [] }');
-    return { data: [] };
+    var errorMsg = '[getOvertimeData] 試算表工作表 (' + sheet.getName() + ') 為空或只有標題';
+    Logger.log(errorMsg);
+    return { data: [], error: errorMsg, sheetNames: sheets.map(function (s) { return s.getName(); }) };
   }
 
   var headers = values[0];              // 第一列標題
@@ -107,8 +137,23 @@ function doGet(e) {
   var t = HtmlService.createTemplateFromFile('index');
 
   // 一進頁面就先把加班資料塞進 Template，前端不用再另外呼叫 google.script.run 讀取
-  var initPayload = getOvertimeData();
-  t.INIT_DATA_JSON = JSON.stringify(initPayload);
+  var initPayload;
+  try {
+    initPayload = getOvertimeData();
+  } catch (err) {
+    Logger.log('[doGet] getOvertimeData 失敗: %s', err);
+    initPayload = { data: [], error: String(err) };
+  }
+
+  // 💥 重要：確保轉為字串，若失敗則傳回空物件 JSON
+  var initJson;
+  try {
+    initJson = JSON.stringify(initPayload);
+  } catch (err) {
+    initJson = '{"data":[], "error":"JSON stringify failure"}';
+  }
+
+  t.INIT_DATA_JSON = initJson;
 
   // 提供給前端的部署標籤，對應 index.html 裡的 "<?= DEPLOY_TAG ?>"
   // 這裡用日期時間當作 build tag，方便你在前端看到目前版本

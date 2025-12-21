@@ -418,21 +418,51 @@
         color: #fff;
     }
 
-    .capsule.yellow {
-        background: linear-gradient(135deg,
-                rgba(255, 235, 59, 0.96),
-                rgba(255, 235, 59, 0.8));
-        color: #000;
-        font-weight: bold;
-        border-color: rgba(255, 235, 59, 0.9);
+    .dashboard-stats-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding-bottom: 12px;
     }
 
-    .info-chip.blue {
-        background: linear-gradient(135deg,
-                rgba(0, 122, 255, 0.9),
-                rgba(0, 122, 255, 0.7));
-        color: #fff;
-        border-color: rgba(0, 122, 255, 0.4);
+    .dashboard-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.03);
+        border-radius: 16px;
+    }
+
+    .dashboard-total {
+        padding-top: 8px;
+        border-top: 1px dashed rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+
+    .stat-row.total-row .label {
+        font-weight: 800;
+        font-size: 1.1rem;
+    }
+
+    .stat-row .capsule {
+        min-width: 80px;
+        text-align: center;
+        font-size: 0.95rem;
+        padding: 4px 12px;
+    }
+
+    .capsule.yellow {
+        background: linear-gradient(135deg, #FFD600, #FFAB00);
+        color: #000;
+        font-weight: 800;
+        box-shadow: 0 4px 12px rgba(255, 214, 0, 0.3);
     }
 
     /* 按鈕 */
@@ -832,6 +862,17 @@
         padding: 4px 8px;
         border-radius: 8px;
         border: 1px solid rgba(0, 0, 0, 0.05);
+        white-space: nowrap;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Specific shrinking for daily detail chips to prevent layout break */
+    [id^="chip-travel-"],
+    [id^="chip-daily-"] {
+        font-size: 0.72rem !important;
+        padding: 2px 6px !important;
     }
 
     /* Sunday Header Background */
@@ -1002,6 +1043,7 @@
     }
 
     .grid-cell {
+        position: relative;
         width: 10px !important;
         height: 10px !important;
         min-width: 10px;
@@ -1021,6 +1063,7 @@
         }
 
         .grid-cell {
+            position: relative;
             width: 7px !important;
             height: 7px !important;
             min-width: 7px;
@@ -2703,5 +2746,184 @@
         .analytics-container {
             padding: 20px 16px;
         }
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+        opacity: 1;
+    }
+
+    .modal-content {
+        width: 90%;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+        transform: translateY(20px);
+        transition: transform 0.3s ease;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-overlay.active .modal-content {
+        transform: translateY(0);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        position: sticky;
+        top: 0;
+        background: inherit;
+        z-index: 10;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Salary Record List */
+    .salary-record-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .salary-item {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 12px;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.5);
+        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        transition: all 0.2s ease;
+    }
+
+    .salary-item:hover {
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .salary-item input {
+        border: none;
+        background: rgba(0, 0, 0, 0.05);
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        width: 100%;
+        text-align: center;
+    }
+
+    .salary-item .stepper-btn {
+        background: rgba(0, 0, 0, 0.05);
+        border: none;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: ns-resize;
+        text-align: center;
+        user-select: none;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .salary-item .stepper-btn.active {
+        background: var(--color-primary);
+        color: white;
+    }
+
+    .add-salary-btn {
+        width: 100%;
+        padding: 14px;
+        border-radius: 16px;
+        border: 2px dashed rgba(0, 0, 0, 0.1);
+        background: transparent;
+        color: var(--color-primary);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .add-salary-btn:hover {
+        background: rgba(0, 122, 255, 0.05);
+        border-color: var(--color-primary);
+    }
+
+    .salary-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    /* Action Icons */
+    .salary-actions .material-symbols-outlined {
+        font-size: 22px;
+    }
+
+    .salary-actions .btn-v {
+        color: #34c759;
+        cursor: pointer;
+    }
+
+    .salary-actions .btn-x {
+        color: #ff3b30;
+        cursor: pointer;
+    }
+
+    .salary-actions .btn-del {
+        color: #ff3b30;
+        opacity: 0.5;
+        cursor: pointer;
+    }
+
+    .salary-actions .btn-del:hover {
+        opacity: 1;
+    }
+
+    /* Spin Animation */
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    body.is-dragging {
+        user-select: none !important;
+        -webkit-user-select: none !important;
     }
 </style>
