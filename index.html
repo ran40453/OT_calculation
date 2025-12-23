@@ -193,6 +193,39 @@
               <span class="material-symbols-outlined">person</span>
             </button>
           </div>
+          <div class="add-card-item" id="leaveInfoRow" style="display:none; width: 100%; margin-top: 8px;">
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <select id="newLeaveType" class="smart-stepper-add"
+                style="flex: 2; height: 38px; border-radius: 10px; font-size: 13px; padding: 0 8px;">
+                <option value="特休">特休</option>
+                <option value="事假">事假</option>
+                <option value="病假">病假</option>
+                <option value="公假">公假</option>
+                <option value="婚假">婚假</option>
+                <option value="公傷假">公傷假</option>
+                <option value="喪假">喪假</option>
+                <option value="有薪產假">有薪產假</option>
+                <option value="無薪產假">無薪產假</option>
+                <option value="補休">補休</option>
+                <option value="產檢假">產檢假</option>
+                <option value="陪產檢及陪產假">陪產檢及陪產假</option>
+                <option value="駐地休假">駐地休假</option>
+                <option value="生理假">生理假</option>
+                <option value="家庭照顧假">家庭照顧假</option>
+                <option value="住院病假">住院病假</option>
+                <option value="健檢假">健檢假</option>
+              </select>
+              <select id="newLeaveAmount" class="smart-stepper-add"
+                style="flex: 1; height: 38px; border-radius: 10px; font-size: 13px; padding: 0 8px;">
+                <option value="1">1.0 天</option>
+                <option value="0.5">0.5 天</option>
+                <option value="0.125">1 小時</option>
+                <option value="0.25">2 小時</option>
+                <option value="0.375">3 小時</option>
+                <option value="0.5">4 小時</option>
+              </select>
+            </div>
+          </div>
           <div class="add-card-item">
             <label>Travel</label>
             <button type="button" id="newTravelCountry" class="smart-stepper-add" data-type="travel">
@@ -378,6 +411,28 @@
             <span>新增出差地區</span>
           </button>
         </section>
+        <section class="salary-section" style="border-top: 1px solid #eee; padding-top: 16px;">
+          <h4
+            style="margin: 0 0 12px 0; color: var(--primary); font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined">event_available</span> 特休管理
+          </h4>
+          <div style="background: rgba(0,122,255,0.05); padding: 12px; border-radius: 12px; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.9rem; font-weight: 600;">核給總時數 (天)</span>
+              <input type="number" id="annualLeaveQuoata" value="5.25" step="0.125"
+                onchange="saveLeaveQuota(this.value)" style="width: 80px; text-align: right;">
+            </div>
+            <div id="leaveSummaryUI" style="font-size: 0.85rem; color: #666; line-height: 1.5;">
+              <!-- 由 JS 更新: 已請 3 天 / 剩餘 2.25 天 -->
+            </div>
+          </div>
+        </section>
+
+        <div class="modal-footer" style="padding: 16px 0 0 0; border-top: 1px solid #eee; margin-top: 16px;">
+          <button class="icon-button" onclick="closeSalaryModal()" style="width: 100%; background: #666;">
+            <span>關閉視窗</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>

@@ -97,6 +97,10 @@
           }
 
           const isLeave = !!entry.isLeave;
+          if (isLeave && !entry.leaveType) {
+            entry.leaveType = '特休';
+            entry.leaveAmount = 1;
+          }
           const otHours = (parseFloat(entry.v167) || 0) + (parseFloat(entry.v134) || 0) + (parseFloat(entry.v166) || 0) + (parseFloat(entry.v267) || 0);
 
           // Find applicable salary from history
@@ -140,7 +144,7 @@
             const applicable = salaryHistory.find(h => h.date <= monthKey) || salaryHistory[salaryHistory.length - 1];
             const salary = applicable ? parseFloat(applicable.amount) : 68000;
 
-            entry.monthSLR = (salary + travelSum + otSalarySum).toFixed(2);
+            entry.monthSLR = (salary + travelSum + otSalarySum).toFixed(0);
           }
         });
 
@@ -165,6 +169,7 @@
           global.updateMonthStatsDOM();
         }
         updateDashboard();
+        updateLeaveSummaryDOM();
       } catch (err) {
         console.error('[OT] updateAll 發生預期外錯誤:', err);
         showNotification('❌ 計算更新失敗，請檢查資料格式', true);
@@ -1154,16 +1159,67 @@
         const leaveIcon = document.createElement('span');
         leaveIcon.classList.add('material-symbols-outlined');
         leaveIcon.textContent = entry.isLeave ? 'person_off' : 'person';
-        leaveIcon.style.fontSize = '20px'; // Matching scale
+        leaveIcon.style.fontSize = '24px';
         leaveIcon.style.color = entry.isLeave ? '#ba1a1a' : 'rgba(0,0,0,0.4)';
         leaveBtn.appendChild(leaveIcon);
+
+        // Leave Details UI (inside footer or body?)
+        // Let's create a dedicated section for leave details in the card body if isLeave is true
+        if (entry.isLeave) {
+          const leaveDetail = document.createElement('div');
+          leaveDetail.style.display = 'flex';
+          leaveDetail.style.gap = '8px';
+          leaveDetail.style.marginTop = '8px';
+          leaveDetail.style.width = '100%';
+
+          const typeSel = document.createElement('select');
+          const types = [
+            '特休', '事假', '病假', '公假', '婚假', '公傷假', '喪假',
+            '有薪產假', '無薪產假', '補休', '產檢假', '陪產檢及陪產假',
+            '駐地休假', '生理假', '家庭照顧假', '住院病假', '健檢假'
+          ];
+          types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t; opt.textContent = t;
+            if (entry.leaveType === t) opt.selected = true;
+            typeSel.appendChild(opt);
+          });
+          typeSel.style.flex = '2'; typeSel.style.height = '32px'; typeSel.style.borderRadius = '8px'; typeSel.style.fontSize = '12px';
+          typeSel.onchange = (e) => {
+            entry.leaveType = e.target.value;
+            updateAll(index);
+          };
+
+          const amtSel = document.createElement('select');
+          const amts = [
+            { v: 1, l: '1.0 天' }, { v: 0.5, l: '0.5 天' }, { v: 0.125, l: '1 小時' }, { v: 0.25, l: '2 小時' }, { v: 0.375, l: '3 小時' }, { v: 0.5, l: '4 小時' }
+          ];
+          amts.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.v; opt.textContent = a.l;
+            if (entry.leaveAmount == a.v) opt.selected = true;
+            amtSel.appendChild(opt);
+          });
+          amtSel.style.flex = '1'; amtSel.style.height = '32px'; amtSel.style.borderRadius = '8px'; amtSel.style.fontSize = '12px';
+          amtSel.onchange = (e) => {
+            entry.leaveAmount = parseFloat(e.target.value);
+            updateAll(index);
+          };
+
+          leaveDetail.appendChild(typeSel);
+          leaveDetail.appendChild(amtSel);
+          body.appendChild(leaveDetail);
+        }
 
         leaveBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           entry.isLeave = !entry.isLeave;
-          updateAll(index); // Full refresh to zero out values
+          if (entry.isLeave && !entry.leaveType) {
+            entry.leaveType = '特休';
+            entry.leaveAmount = 1;
+          }
+          updateAll(index);
         });
-
         // Travel Icon Button
         const travelBtn = document.createElement('div');
         travelBtn.classList.add('circular-toggle-btn');
@@ -1307,7 +1363,7 @@
         'weekday',
         '1.67',
         '1.34',
-        '2',
+        '2.0',
         '2.67',
         'OT hr SUM',
         'Base',
@@ -1316,6 +1372,12 @@
         'Total',
         'Month SLR',
         'Remark',
+        'isLeave',
+        'isHoliday',
+        'travelCountry',
+        'endTime',
+        'leaveType',
+        'leaveAmount'
       ];
       const rows = tableData.map((entry) => [
         entry.date || '',
@@ -1331,6 +1393,12 @@
         String(entry.total || 0),
         String(entry.monthSLR || 0),
         entry.remark || '',
+        entry.isLeave ? 'TRUE' : 'FALSE',
+        entry.isHoliday ? 'TRUE' : 'FALSE',
+        entry.travelCountry || 'None',
+        entry.endTime || '',
+        entry.leaveType || '',
+        entry.leaveAmount || 0
       ]);
       return { headers, rows };
     }
@@ -1574,7 +1642,7 @@
       .getElementById('exportCSVCard')
       .addEventListener('click', () => {
         let csv =
-          'date,weekday,1.67,1.34,1.66,2.67,OT hr SUM,Base,Travel,OT Salary,Total,Month SLR,Remark\n';
+          'date,weekday,1.67,1.34,2.0,2.67,OT hr SUM,Base,Travel,OT Salary,Total,Month SLR,Remark,isLeave,isHoliday,travelCountry,endTime,leaveType,leaveAmount\n';
         tableData.forEach((entry) => {
           csv +=
             [
@@ -1590,7 +1658,13 @@
               entry.otSalary,
               entry.total,
               entry.monthSLR,
-              entry.remark,
+              entry.remark ? `"${entry.remark.replace(/"/g, '""')}"` : '',
+              entry.isLeave ? 'TRUE' : 'FALSE',
+              entry.isHoliday ? 'TRUE' : 'FALSE',
+              entry.travelCountry || 'None',
+              entry.endTime || '',
+              entry.leaveType || '',
+              entry.leaveAmount || 0
             ].join(',') + '\n';
         });
 
@@ -1627,7 +1701,12 @@
       const lines = text
         .split('\n')
         .filter((line) => line.trim() !== '');
+      if (lines.length <= 1) return;
+
       tableData = lines.slice(1).map((line) => {
+        // Handle potential commas in remarks by using a smarter split if needed, 
+        // but for now simple split and join for remaining columns if remark has commas is better.
+        // Actually a proper CSV parser would be better, but let's stick to consistent indices for now.
         const cols = line.split(',');
         return {
           date: cols[0],
@@ -1635,8 +1714,13 @@
           v134: parseFloat(cols[3]) || 0,
           v166: parseFloat(cols[4]) || 0,
           v267: parseFloat(cols[5]) || 0,
-          remark: cols[13] || '', // N 欄備註
-          travelEnabled: true, // 匯入資料預設有 Travel，之後可用 toggle 關閉
+          remark: (cols[12] || '').replace(/^"|"$/g, ''),
+          isLeave: cols[13] === 'TRUE',
+          isHoliday: cols[14] === 'TRUE',
+          travelCountry: cols[15] || 'None',
+          endTime: cols[16] || '',
+          leaveType: cols[17] || '',
+          leaveAmount: parseFloat(cols[18]) || 0
         };
       });
     }
@@ -2042,15 +2126,36 @@
 
       // Leave Toggle for Add Card
       const leaveToggleBtn = document.getElementById('newLeaveToggle');
+      const leaveInfoRow = document.getElementById('leaveInfoRow');
+      const newLeaveType = document.getElementById('newLeaveType');
+      const newLeaveAmount = document.getElementById('newLeaveAmount');
+
       if (leaveToggleBtn) {
         leaveToggleBtn.addEventListener('click', () => {
           newAddCardState.isLeave = !newAddCardState.isLeave;
           leaveToggleBtn.classList.toggle('on', newAddCardState.isLeave);
+          if (leaveInfoRow) leaveInfoRow.style.display = newAddCardState.isLeave ? 'flex' : 'none';
+
           const icon = leaveToggleBtn.querySelector('.material-symbols-outlined');
           if (icon) {
             icon.textContent = newAddCardState.isLeave ? 'person_off' : 'person';
             icon.style.color = newAddCardState.isLeave ? '#ba1a1a' : 'rgba(0,0,0,0.5)';
           }
+          if (newAddCardState.isLeave) {
+            newAddCardState.leaveType = newLeaveType.value || '特休';
+            newAddCardState.leaveAmount = parseFloat(newLeaveAmount.value) || 1;
+          }
+        });
+      }
+
+      if (newLeaveType) {
+        newLeaveType.addEventListener('change', () => {
+          newAddCardState.leaveType = newLeaveType.value;
+        });
+      }
+      if (newLeaveAmount) {
+        newLeaveAmount.addEventListener('change', () => {
+          newAddCardState.leaveAmount = parseFloat(newLeaveAmount.value);
         });
       }
 
@@ -2192,7 +2297,9 @@
             isLeave: isLeave,
             remark: '',
             travelCountry: newAddCardState.travel,
-            endTime: `${String(newAddCardState.hour).padStart(2, '0')}:${String(newAddCardState.minute).padStart(2, '0')}`
+            endTime: `${String(newAddCardState.hour).padStart(2, '0')}:${String(newAddCardState.minute).padStart(2, '0')}`,
+            leaveType: isLeave ? newAddCardState.leaveType : '',
+            leaveAmount: isLeave ? newAddCardState.leaveAmount : 0
           };
 
           addNewEntry(newEntry);
@@ -2221,6 +2328,10 @@
               icon.style.color = 'rgba(0,0,0,0.5)';
             }
           }
+          if (leaveInfoRow) leaveInfoRow.style.display = 'none';
+          if (newLeaveType) newLeaveType.value = '特休';
+          if (newLeaveAmount) newLeaveAmount.value = '1';
+
           if (holidayToggleBtn) {
             holidayToggleBtn.classList.remove('on');
             const icon = holidayToggleBtn.querySelector('.material-symbols-outlined');
@@ -2787,6 +2898,44 @@
       saveTravelRates(rates);
       renderTravelRateList();
     };
+
+    // --- Leave Management Logic ---
+    window.saveLeaveQuota = function (val) {
+      localStorage.setItem('annualLeaveQuota', val);
+      updateAll();
+    };
+
+    function getLeaveQuota() {
+      return parseFloat(localStorage.getItem('annualLeaveQuota')) || 5.25;
+    }
+
+    function updateLeaveSummaryDOM() {
+      const quota = getLeaveQuota();
+      let used = 0;
+      tableData.forEach(entry => {
+        if (entry.isLeave && entry.leaveType === '特休') {
+          used += (parseFloat(entry.leaveAmount) || 0);
+        }
+      });
+      const remaining = quota - used;
+      const el = document.getElementById('leaveSummaryUI');
+      if (el) {
+        el.innerHTML = `
+          <div style="font-weight: 700; color: var(--color-primary); font-size: 1rem; margin-bottom: 4px;">
+            共 ${quota} 天 / 剩 ${remaining} 天
+          </div>
+          <div style="color: #666; font-size: 0.85rem;">
+            年度特休: ${quota} 天<br>
+            已請天數: ${used} 天<br>
+            <span style="opacity: 0.7;">(由系統自動加總特休記錄)</span>
+          </div>
+        `;
+      }
+      const input = document.getElementById('annualLeaveQuoata');
+      if (input && document.activeElement !== input) {
+        input.value = quota;
+      }
+    }
 
     window.addTravelRateRecord = function () {
       const country = prompt('請輸入出差地區名稱（例如：USA）:');
