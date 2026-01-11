@@ -35,6 +35,37 @@
       return new Date(s.replace(/-/g, '/'));
     }
 
+    // 將各種格式 (ISO, Date 字串, 數值) 轉為 HH:mm 格式
+    function normalizeTime(val) {
+      if (!val) return '';
+      const s = val.toString().trim();
+      if (!s) return '';
+
+      // 情況 A: ISO 格式或包含 T 的字串 (Google Sheets 常見)
+      // 例如 1899-12-30T17:30:00.000Z 或 2024-01-01T21:00:00
+      if (s.includes('T') || (s.includes(' ') && s.includes('-'))) {
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+      }
+
+      // 情況 B: 只有時間部分 或包含 1899 的空格字串
+      // 例如 "23:23" 或 "1899/12/30 23:23:00"
+      const timeMatch = s.match(/(\d{1,2}):(\d{1,2})/);
+      if (timeMatch) {
+        // 即使匹配到了，如果是 1899/12/30 這種，直接用 Regex 抓最後的時間段最保險
+        const parts = s.split(' ');
+        const lastPart = parts[parts.length - 1];
+        if (lastPart.includes(':')) {
+          const [h, m] = lastPart.split(':');
+          return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+      }
+
+      return s;
+    }
+
     // 強化版本 localStorage 存取 (避免 GAS iframe 或無痕模式失效)
     const storage = {
       get: (key) => {
@@ -417,8 +448,15 @@
     // 調整 OT 數值（不重新渲染表格，只更新數值）
     function adjustOTValue(entry, key, delta) {
       if (key === 'vH' || key === 'vM') {
-        const timeStr = entry.endTime || '17:30';
-        let [h, m] = timeStr.split(':').map(Number);
+        const timeStr = normalizeTime(entry.endTime) || '17:30';
+        let [hStr, mStr] = timeStr.split(':');
+        let h = parseInt(hStr, 10);
+        let m = parseInt(mStr, 10);
+
+        // Fallback for NaN (should not happen with normalizeTime but stay safe)
+        if (isNaN(h)) h = 17;
+        if (isNaN(m)) m = 30;
+
         if (key === 'vH') {
           h = (h + delta + 24) % 24;
         } else {
@@ -658,6 +696,11 @@
   * @param {boolean} isHoliday - Manually toggled National Holiday
   */
     function calculateOvertime(h, m, dateStr, isHoliday = false) {
+      // Defensive checks for NaN
+      if (isNaN(h) || isNaN(m)) {
+        console.warn('[OT] calculateOvertime called with NaN values:', h, m);
+        return { v134: 0, v167: 0, v166: 0, v267: 0, total: 0 };
+      }
       const date = parseDateSafe(dateStr);
       const isWeekend = (date.getDay() === 0 || date.getDay() === 6); // Sat or Sun
       const timeVal = h + (m / 60);
@@ -736,17 +779,24 @@
      * Used for recreating HH:MM state from loaded data
      */
     function getReverseTime(entry) {
-      // Check if we have explicit endTime stored (Future proofing)
-      if (entry.endTime) {
-        const [h, m] = entry.endTime.split(':').map(Number);
-        return { h, m };
+      // Check if we have explicit endTime stored
+      const explicitTime = normalizeTime(entry.endTime);
+      if (explicitTime) {
+        const [h, m] = explicitTime.split(':').map(Number);
+        if (!isNaN(h) && !isNaN(m)) {
+          return { h, m };
+        }
       }
 
       // Otherwise derive from OT hours
       const date = parseDateSafe(entry.date);
       const isWeekend = (date.getDay() === 0 || date.getDay() === 6);
       const isHoliday = !!entry.isHoliday;
-      const otSum = (safeParseFloat(entry.v134) || 0) + (safeParseFloat(entry.v167) || 0) + (safeParseFloat(entry.v267) || 0) + (safeParseFloat(entry.v166) || 0);
+      const v134 = safeParseFloat(entry.v134);
+      const v167 = safeParseFloat(entry.v167);
+      const v267 = safeParseFloat(entry.v267);
+      const v166 = safeParseFloat(entry.v166);
+      const otSum = v134 + v167 + v267 + v166;
 
       let timeVal = 0;
 
@@ -764,9 +814,9 @@
         timeVal = OT_RULES.weekday.offTime + otSum;
       }
 
-      // If timeVal >= 24, it means it's next day morning
-      if (timeVal >= 24) {
-        // We still return the absolute hour, snapping logic will handle display
+      // If timeVal is NaN for some reason, fallback to default
+      if (isNaN(timeVal)) {
+        timeVal = OT_RULES.weekday.offTime;
       }
 
       // Convert decimal to H:M (Round to nearest 10m)
@@ -2361,7 +2411,7 @@
             otSum: (otSumRaw || '').toString(),
             remark: (remarkRaw || '').toString(),
             travelCountry: trvCountryRaw || (travelEnabled ? 'Vietnam' : 'None'),
-            endTime: row.endTime || '',
+            endTime: (row.endTime && row.endTime.toString().includes('NaN')) ? '' : (row.endTime || ''),
             isLeave: isLeave,
             leaveType: row.leaveType || (isLeave ? '特休' : ''),
             leaveAmount: safeParseFloat(row.leaveAmount || (isLeave ? 1 : 0)),
