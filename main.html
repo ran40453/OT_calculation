@@ -2078,12 +2078,17 @@
         totalOTSalary = 0,
         totalCost = 0;
 
-      const travelDays = tableData.filter(e => {
+      const today = new Date();
+      const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+      const monthData = tableData.filter(e => e.date && e.date.startsWith(currentMonthKey));
+
+      const travelDays = monthData.filter(e => {
         const trv = parseFloat(e.travel || 0);
         return trv > 0;
       }).length;
 
-      tableData.forEach((entry) => {
+      monthData.forEach((entry) => {
         const isLeave = !!entry.isLeave;
         const otHours = isLeave ? 0 : (
           (parseFloat(entry.v167) || 0) +
@@ -2943,11 +2948,14 @@
     const centerTextPlugin = {
       id: 'centerText',
       afterDraw(chart) {
-        if (chart.canvas.id !== 'incomeChart') return;
+        if (chart.canvas.id !== 'incomeChart' && chart.canvas.id !== 'incomeChart3M') return;
         const { ctx, width, height } = chart;
         ctx.restore();
 
-        const sum = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+        const data = chart.data.datasets[0].data;
+        const sum = data.reduce((a, b) => a + b, 0);
+        const count = chart.data.labels.length; // Number of categories, or we can use 1 for average if we calculate sum as average
+
         const isNeumo = document.documentElement.getAttribute('data-theme') === 'neumorphic';
 
         const fontSize = (height / 160).toFixed(2);
@@ -2963,7 +2971,7 @@
 
         ctx.font = `400 ${(fontSize * 0.4)}em sans-serif`;
         ctx.fillStyle = isNeumo ? '#888' : '#666';
-        const subText = 'Total Income';
+        const subText = 'Avg Income';
         const subX = Math.round((width - ctx.measureText(subText).width) / 2);
         const subY = height / 2 + 15;
         ctx.fillText(subText, subX, subY);
@@ -2985,10 +2993,11 @@
 
       const ctxOvertime = document.getElementById('overtimeChart')?.getContext('2d');
       const ctxIncome = document.getElementById('incomeChart')?.getContext('2d');
+      const ctxIncome3M = document.getElementById('incomeChart3M')?.getContext('2d');
       const ctxAttendance = document.getElementById('attendanceChart')?.getContext('2d');
       const ctxSalaryTrend = document.getElementById('salaryTrendChart')?.getContext('2d');
 
-      if (!ctxOvertime || !ctxIncome || !ctxAttendance || !ctxSalaryTrend) return;
+      if (!ctxOvertime || !ctxIncome || !ctxIncome3M || !ctxAttendance || !ctxSalaryTrend) return;
 
       const isNeumo = document.documentElement.getAttribute('data-theme') === 'neumorphic';
       const textColor = isNeumo ? '#666' : '#333';
@@ -3020,7 +3029,31 @@
         }
       });
 
-      // 2. Income Structure
+      // 2. Income Structure (All Time)
+      const incomeOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '75%',
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, color: textColor, font: { size: 10 } } },
+          datalabels: {
+            color: '#fff',
+            formatter: (value, ctx) => {
+              const sum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              if (sum === 0) return '';
+              return (value * 100 / sum).toFixed(1) + '%';
+            },
+            font: { weight: 'bold', size: 9 }
+          },
+          tooltip: {
+            callbacks: {
+              label: (item) => `${item.label}: ${Math.round(item.raw).toLocaleString()}`
+            }
+          },
+          centerText: { display: true }
+        }
+      };
+
       charts.income = new Chart(ctxIncome, {
         type: 'doughnut',
         data: {
@@ -3032,33 +3065,22 @@
             hoverOffset: 10
           }]
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: '75%',
-          plugins: {
-            legend: { position: 'bottom', labels: { boxWidth: 12, color: textColor } },
-            datalabels: {
-              color: '#fff',
-              formatter: (value, ctx) => {
-                const sum = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                if (sum === 0) return '';
-                return (value * 100 / sum).toFixed(1) + '%';
-              },
-              font: { weight: 'bold', size: 10 }
-            },
-            tooltip: {
-              callbacks: {
-                label: (item) => `${item.label}: ${Math.round(item.raw).toLocaleString()}`
-              }
-            },
-            centerText: {
-              display: true,
-              text: 'Total',
-              label: 'Income'
-            }
-          }
-        }
+        options: incomeOptions
+      });
+
+      // 2.1 Income Structure (Last 3 Months)
+      charts.income3M = new Chart(ctxIncome3M, {
+        type: 'doughnut',
+        data: {
+          labels: ['Salary', 'Travel', 'OT'],
+          datasets: [{
+            data: [0, 0, 0],
+            backgroundColor: ['#4CD964', '#FF9500', '#007AFF'],
+            borderWidth: 0,
+            hoverOffset: 10
+          }]
+        },
+        options: incomeOptions
       });
 
       // 3. Attendance Chart (Straight lines)
@@ -3120,14 +3142,56 @@
 
       try {
         let totalBase = 0, totalTravel = 0, totalOtPay = 0;
+        let countAll = 0;
+
+        let totalBase3M = 0, totalTravel3M = 0, totalOtPay3M = 0;
+        let count3M = 0;
+
+        const today = new Date();
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(today.getMonth() - 3);
+
         tableData.forEach(entry => {
           if (!entry.date) return;
+          const eDate = parseDateSafe(entry.date);
           const mKey = entry.date.slice(0, 7).replace(/\//g, '-');
-          if (selectedMonth && mKey !== selectedMonth) return;
-          totalBase += safeParseFloat(entry.base || 0);
-          totalTravel += safeParseFloat(entry.travel || 0);
-          totalOtPay += safeParseFloat(entry.otSalary || 0);
+
+          const isSelected = !selectedMonth || mKey === selectedMonth;
+          if (isSelected) {
+            totalBase += safeParseFloat(entry.base || 0);
+            totalTravel += safeParseFloat(entry.travel || 0);
+            totalOtPay += safeParseFloat(entry.otSalary || 0);
+            countAll++;
+          }
+
+          // Last 3 Months
+          if (eDate >= threeMonthsAgo && eDate <= today) {
+            totalBase3M += safeParseFloat(entry.base || 0);
+            totalTravel3M += safeParseFloat(entry.travel || 0);
+            totalOtPay3M += safeParseFloat(entry.otSalary || 0);
+            count3M++;
+          }
         });
+
+        // Calculate Averages for Pie Charts
+        // For All Time: find unique months in the selection
+        const targetMonths = new Set(tableData.filter(e => {
+          if (!e.date) return false;
+          const mKey = e.date.slice(0, 7).replace(/\//g, '-');
+          return !selectedMonth || mKey === selectedMonth;
+        }).map(e => e.date.slice(0, 7)));
+        const numMonthsAll = targetMonths.size || 1;
+
+        // For 3 Months: find unique months in the 3M range
+        const targetMonths3M = new Set(tableData.filter(e => {
+          if (!e.date) return false;
+          const eDate = parseDateSafe(e.date);
+          return eDate >= threeMonthsAgo && eDate <= today;
+        }).map(e => e.date.slice(0, 7)));
+        const numMonths3M = targetMonths3M.size || 1;
+
+        const avgAll = [totalBase / numMonthsAll, totalTravel / numMonthsAll, totalOtPay / numMonthsAll];
+        const avg3M = [totalBase3M / numMonths3M, totalTravel3M / numMonths3M, totalOtPay3M / numMonths3M];
 
         const allMonthsData = {};
         const allMonthsAttendance = {};
@@ -3165,9 +3229,12 @@
         charts.overtime.data.datasets[0].data = sortedMonths.map(m => allMonthsData[m]);
         charts.overtime.update();
 
-        // Update Income Chart
-        charts.income.data.datasets[0].data = [totalBase, totalTravel, totalOtPay];
+        // Update Income Charts
+        charts.income.data.datasets[0].data = avgAll;
         charts.income.update();
+
+        charts.income3M.data.datasets[0].data = avg3M;
+        charts.income3M.update();
 
         // Update Attendance Chart
         charts.attendance.data.labels = sortedMonths;
@@ -3197,8 +3264,13 @@
       let weekendDays = 0;
       let thisMonthIncome = 0;
 
+      let totalIncomeLastYear = 0;
+      let thisMonthOTHours = 0;
+
       const today = new Date();
       const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(today.getFullYear() - 1);
 
       // 根據篩選器決定計算範圍
       const targetData = selectedMonth
@@ -3246,7 +3318,18 @@
         if (!selectedMonth) {
           if (entry.date.startsWith(currentMonthKey)) {
             thisMonthIncome += income;
+            thisMonthOTHours += otVal;
           }
+        } else {
+          // If selectedMonth is current, also update thisMonthOTHours
+          if (entry.date.startsWith(currentMonthKey)) {
+            thisMonthOTHours += otVal;
+          }
+        }
+
+        // Last Year Income
+        if (date >= oneYearAgo && date <= today) {
+          totalIncomeLastYear += income;
         }
       });
 
@@ -3261,6 +3344,7 @@
       const avgDaily = workDays > 0 ? totalIncome / workDays : 0;
       const uniqueMonths = new Set(targetData.map(e => e.date.slice(0, 7))).size;
       const avgMonthly = uniqueMonths > 0 ? totalIncome / uniqueMonths : totalIncome;
+      const avgAnnual = avgMonthly * 12;
 
       // 2. 實質時薪 (有效)：總收入 / (標準工時 + 加班工時)
       const standardWorkHours = workDays * 8;
@@ -3311,8 +3395,11 @@
       setEl('statAvgMonthly', fmt(avgMonthly));
 
       setEl('statTotalIncome', fmt(totalIncome));
+      setEl('statTotalIncomeLastYear', fmt(totalIncomeLastYear));
       setEl('statThisMonthIncome', fmt(thisMonthIncome));
       setEl('statOTHours', totalOT.toFixed(1));
+      setEl('statOTHoursThisMonth', '+' + thisMonthOTHours.toFixed(1));
+      setEl('statAvgAnnual', fmt(avgAnnual));
 
       setEl('statTravelRatio', pct(travelRatio));
       setEl('statOTImpact', pct(otImpact));

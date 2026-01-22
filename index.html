@@ -92,7 +92,7 @@
         <div class="card dashboard-card" id="dashboardCard">
           <div class="card-header" onclick="toggleDashboardCard()"
             style="padding: 16px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0; text-align: left;">總計</h3>
+            <h3 style="margin: 0; text-align: left;">本月統計</h3>
             <span class="material-symbols-outlined card-expand-icon" id="dashboardExpandIcon">expand_less</span>
           </div>
 
@@ -319,17 +319,30 @@
             <h3>收入分析</h3>
           </div>
           <div class="stat-list">
-            <div class="stat-item">
-              <span class="label">總收入</span>
-              <span class="value highlight" id="statTotalIncome">0</span>
+            <div class="stat-item"
+              style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px;">
+              <div style="flex: 1; display: flex; flex-direction: column;">
+                <span class="label">總收入 (All)</span>
+                <span class="value highlight" id="statTotalIncome">0</span>
+              </div>
+              <div style="width: 1px; height: 30px; background: rgba(0,0,0,0.1);"></div>
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: flex-end;">
+                <span class="label">近一年 (1Y)</span>
+                <span class="value" id="statTotalIncomeLastYear"
+                  style="color: var(--color-primary); font-weight: 700;">0</span>
+              </div>
             </div>
             <div class="stat-item">
               <span class="label">本月收入</span>
               <span class="value" id="statThisMonthIncome">0</span>
             </div>
-            <div class="stat-item">
+            <div class="stat-item" style="display: flex; align-items: center; justify-content: space-between;">
               <span class="label">加班總時數</span>
-              <span class="value" id="statOTHours">0</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="value" id="statOTHours">0</span>
+                <span class="capsule" id="statOTHoursThisMonth"
+                  style="background: var(--color-primary); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; opacity: 0.9;">+0</span>
+              </div>
             </div>
             <div class="stat-item">
               <span class="label">出差補貼佔比</span>
@@ -354,8 +367,15 @@
         </div>
         <div class="chart-card">
           <h3>收入結構</h3>
-          <div style="position: relative; height: 100%; width: 100%;">
-            <canvas id="incomeChart"></canvas>
+          <div style="display: flex; gap: 16px; height: 100%; width: 100%;">
+            <div style="flex: 1; position: relative;">
+              <div style="font-size: 0.7rem; text-align: center; color: #999; margin-bottom: 4px;">所有資料平均</div>
+              <canvas id="incomeChart"></canvas>
+            </div>
+            <div style="flex: 1; position: relative;">
+              <div style="font-size: 0.7rem; text-align: center; color: #999; margin-bottom: 4px;">近三個月平均</div>
+              <canvas id="incomeChart3M"></canvas>
+            </div>
           </div>
         </div>
         <!-- Attendance Analysis (Merged Office & Travel) -->
