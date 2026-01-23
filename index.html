@@ -17,14 +17,22 @@
     if (window.__CW_DEPLOY_TAG && window.__CW_DEPLOY_TAG.startsWith("<" + "?")) window.__CW_DEPLOY_TAG = "LOCAL_DEV";
 
     // 接收來自 Google Apps Script 定向注入的資料
-    window.__OT_INIT_DATA__ = <?!= typeof INIT_DATA_JSON !== 'undefined' ? INIT_DATA_JSON : 'null' ?>;
+    // 使用 try-catch 或字串檢查來防止非 GAS 環境下的語法錯誤
+    (function () {
+      try {
+        const rawData = `<?!= typeof INIT_DATA_JSON !== 'undefined' ? INIT_DATA_JSON : 'null' ?>`;
+        if (rawData && !rawData.startsWith('<' + '?')) {
+          window.__OT_INIT_DATA__ = JSON.parse(rawData);
+        } else {
+          window.__OT_INIT_DATA__ = null;
+        }
+      } catch (e) {
+        console.warn('[OT] Failed to parse GAS INIT_DATA:', e);
+        window.__OT_INIT_DATA__ = null;
+      }
+    })();
 
-    // 預加載邏輯
-    if (window.__OT_INIT_DATA__) {
-      window.__OT_INIT_PAYLOAD__ = window.__OT_INIT_DATA__;
-    } else {
-      window.__OT_INIT_PAYLOAD__ = null;
-    }
+    window.__OT_INIT_PAYLOAD__ = window.__OT_INIT_DATA__ || null;
   </script>
   <style>
     /* =========================================
@@ -7315,6 +7323,42 @@
         );
       }
 
+      // === Charts Helper: Center Text Plugin ===
+      const centerTextPlugin = {
+        id: 'centerText',
+        afterDraw(chart) {
+          if (chart.canvas.id !== 'incomeChart' && chart.canvas.id !== 'incomeChart3M') return;
+          const { ctx, width, height } = chart;
+          ctx.restore();
+
+          const data = chart.data.datasets[0].data;
+          const sum = data.reduce((a, b) => a + b, 0);
+          const count = chart.data.labels.length;
+
+          const isNeumo = document.documentElement.getAttribute('data-theme') === 'neumorphic';
+
+          const fontSize = (height / 160).toFixed(2);
+          ctx.font = `600 ${fontSize}em "Open Sans", sans-serif`;
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = isNeumo ? '#444' : '#1d1d1f';
+
+          const text = Math.round(sum).toLocaleString();
+          const textX = Math.round((width - ctx.measureText(text).width) / 2);
+          const textY = height / 2 - 5;
+
+          ctx.fillText(text, textX, textY);
+
+          ctx.font = `400 ${(fontSize * 0.4)}em sans-serif`;
+          ctx.fillStyle = isNeumo ? '#888' : '#666';
+          const subText = 'Avg Income';
+          const subX = Math.round((width - ctx.measureText(subText).width) / 2);
+          const subY = height / 2 + 15;
+          ctx.fillText(subText, subX, subY);
+
+          ctx.save();
+        }
+      };
+
       // 初始載入：在 Apps Script Web App 中會從 Sheet 讀取資料，其他情況顯示空白假表
       loadFromSheet();
 
@@ -7381,41 +7425,7 @@
         }
       });
 
-      // === Charts Helper: Center Text Plugin ===
-      const centerTextPlugin = {
-        id: 'centerText',
-        afterDraw(chart) {
-          if (chart.canvas.id !== 'incomeChart' && chart.canvas.id !== 'incomeChart3M') return;
-          const { ctx, width, height } = chart;
-          ctx.restore();
-
-          const data = chart.data.datasets[0].data;
-          const sum = data.reduce((a, b) => a + b, 0);
-          const count = chart.data.labels.length; // Number of categories, or we can use 1 for average if we calculate sum as average
-
-          const isNeumo = document.documentElement.getAttribute('data-theme') === 'neumorphic';
-
-          const fontSize = (height / 160).toFixed(2);
-          ctx.font = `600 ${fontSize}em "Open Sans", sans-serif`;
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = isNeumo ? '#444' : '#1d1d1f';
-
-          const text = Math.round(sum).toLocaleString();
-          const textX = Math.round((width - ctx.measureText(text).width) / 2);
-          const textY = height / 2 - 5;
-
-          ctx.fillText(text, textX, textY);
-
-          ctx.font = `400 ${(fontSize * 0.4)}em sans-serif`;
-          ctx.fillStyle = isNeumo ? '#888' : '#666';
-          const subText = 'Avg Income';
-          const subX = Math.round((width - ctx.measureText(subText).width) / 2);
-          const subY = height / 2 + 15;
-          ctx.fillText(subText, subX, subY);
-
-          ctx.save();
-        }
-      };
+      /* Move plugin definition up to avoid ReferenceError */
 
       function initCharts(force = false) {
         if (chartsInitialized && !force) return;
