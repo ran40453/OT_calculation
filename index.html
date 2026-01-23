@@ -6672,19 +6672,32 @@
             } else {
               console.warn('[OT] 無法使用 google.script.run，嘗試透過 Vercel Proxy (/api) 抓取...');
               try {
-                const res = await fetch('/api/?api=1').then(r => r.json());
-                if (res && res.data && res.data.length > 0) {
-                  console.log('[OT] Vercel Proxy 抓取成功:', res);
-                  initTableFromPayload(res);
-                  showNotification(`✅ 透過 Proxy 載入 ${res.data.length} 筆資料`);
+                let res;
+                try {
+                  res = await fetch('/api/?api=1');
+                  if (!res.ok) throw new Error(`Proxy status: ${res.status}`);
+                } catch (proxyErr) {
+                  console.warn('[OT] Vercel Proxy 失敗，嘗試直接連線 GAS (Client-Side)...', proxyErr);
+                  // Fallback: Direct Client-Side Fetch
+                  const GAS_URL = "https://script.google.com/macros/s/AKfycbzDY3zDdmGbldTMbra2oPrQ4KWJiqC7kRxT7nIprQugP71KoL28Lj-9L53hYeh6nTxrYw/exec";
+                  res = await fetch(`${GAS_URL}?api=1`);
+                  if (!res.ok) throw new Error(`Direct Fetch status: ${res.status}`);
+                }
+
+                const json = await res.json();
+                if (json && (json.data || json.settings)) {
+                  console.log('[OT] 資料抓取成功:', json);
+                  initTableFromPayload(json);
+                  showNotification(`✅ 成功載入 ${json.data ? json.data.length : 0} 筆資料`);
                 } else {
-                  console.warn('[OT] Vercel Proxy 資料為空');
-                  renderDataList();
+                  console.warn('[OT] 資料格式異常:', json);
+                  throw new Error('Invalid Data Format');
                 }
               } catch (err) {
-                console.error('[OT] Vercel Proxy 抓取失敗:', err);
+                console.error('[OT] 所有連線方式皆失敗:', err);
                 renderDataList();
                 syncTravelToggleUI();
+                showNotification('❌ 無法連線至 Google Sheets，請檢查網路或權限', true);
               }
             }
           }
