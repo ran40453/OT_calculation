@@ -275,7 +275,13 @@ function doPost(e) {
   try {
     var raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
     var payload = JSON.parse(raw);
-    var result = saveOvertimeData(payload);
+
+    var result;
+    if (payload.type === 'settings' || payload.mode === 'settings') {
+      result = saveSettings(payload.data || payload);
+    } else {
+      result = saveOvertimeData(payload);
+    }
 
     return ContentService
       .createTextOutput(JSON.stringify(result))
