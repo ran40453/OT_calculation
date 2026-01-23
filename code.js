@@ -101,8 +101,11 @@ function getOvertimeData() {
     .map(function (r) {
       var obj = {};
       headers.forEach(function (h, i) {
-        // 確保 key 一定是字串，例如 'date', '1.67', 'OT hr SUM'...
-        obj[String(h)] = r[i];
+        // 確保 key 一定是字串且無前後空格，例如 'date', '1.67', 'OT hr SUM'...
+        var key = String(h || '').trim();
+        if (key) {
+          obj[key] = r[i];
+        }
       });
       return obj;
     });

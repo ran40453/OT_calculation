@@ -16,13 +16,13 @@
     window.__CW_DEPLOY_TAG = "<?= DEPLOY_TAG ?>";
     if (window.__CW_DEPLOY_TAG && window.__CW_DEPLOY_TAG.startsWith("<" + "?")) window.__CW_DEPLOY_TAG = "LOCAL_DEV";
 
-    // 從 Apps Script 模板注入的初始加班資料
-    // 使用 JSON script 區塊讀取，避免本地預覽時語法報錯
-    try {
-      const rawPayload = document.getElementById('init-payload').textContent;
-      window.__OT_INIT_PAYLOAD__ = JSON.parse(rawPayload);
-    } catch (e) {
-      console.warn('[OT] 無法讀取或解析初始資料:', e);
+    // 接收來自 Google Apps Script 定向注入的資料
+    window.__OT_INIT_DATA__ = <?!= typeof INIT_DATA_JSON !== 'undefined' ? INIT_DATA_JSON : 'null' ?>;
+
+    // 預加載邏輯
+    if (window.__OT_INIT_DATA__) {
+      window.__OT_INIT_PAYLOAD__ = window.__OT_INIT_DATA__;
+    } else {
       window.__OT_INIT_PAYLOAD__ = null;
     }
   </script>
@@ -6758,7 +6758,12 @@
       }
 
       function initTableFromPayload(payload) {
+        console.log('[OT] initTableFromPayload called with:', payload);
         const rows = payload && payload.data ? payload.data : [];
+        if (rows.length > 0) {
+          console.log('[OT] First row sample:', JSON.stringify(rows[0]));
+        }
+
         tableData = rows.map((row, index) => {
           try {
             let rawDate = row.date;
@@ -6813,18 +6818,18 @@
               console.log('[OT] Diagnostic - First Row Keys:', Object.keys(row));
               console.log('[OT] Diagnostic - First Row Data:', row);
             }
-            const v167 = safeParseFloat(row.v167 ?? row['1.67'] ?? 0);
+            const v167 = safeParseFloat(row.v167 ?? row['1.67'] ?? row['1.66'] ?? 0);
             const v134 = safeParseFloat(row.v134 ?? row['1.34'] ?? 0);
-            const v166 = safeParseFloat(row.v166 ?? row['2'] ?? row['2.0'] ?? row['1.66'] ?? 0);
+            const v166 = safeParseFloat(row.v166 ?? row['2'] ?? row['2.0'] ?? row['2.00'] ?? row['假日'] ?? 0);
             const v267 = safeParseFloat(row.v267 ?? row['2.67'] ?? 0);
 
-            const baseRaw = row.base ?? row.Base ?? '';
-            const travelRaw = row.travel ?? row.Travel ?? '';
-            const otSalaryRaw = row.otSalary ?? row['OT Salary'] ?? '';
-            const totalRaw = row.total ?? row.Total ?? '';
-            const monthSlrRaw = row.monthSLR ?? row['Month SLR'] ?? '';
-            const otSumRaw = row.otSum ?? row['OT hr SUM'] ?? '';
-            const remarkRaw = row.remark ?? row.Remark ?? '';
+            const baseRaw = row.base ?? row.Base ?? row['Base'] ?? '';
+            const travelRaw = row.travel ?? row.Travel ?? row['Travel'] ?? '';
+            const otSalaryRaw = row.otSalary ?? row['OT Salary'] ?? row['otSalary'] ?? '';
+            const totalRaw = row.total ?? row.Total ?? row['Total'] ?? '';
+            const monthSlrRaw = row.monthSLR ?? row['Month SLR'] ?? row['MonthSLR'] ?? '';
+            const otSumRaw = row.otSum ?? row['OT hr SUM'] ?? row['otSum'] ?? '';
+            const remarkRaw = row.remark ?? row.Remark ?? row['Remark'] ?? '';
 
             const travelNum = safeParseFloat(travelRaw) || 0;
             const travelEnabled = travelNum > 0;
@@ -6851,9 +6856,9 @@
               endTime: (row.endTime && row.endTime.toString().includes('NaN')) ? '' : (row.endTime || ''),
               isLeave: isLeave,
               leaveType: row.leaveType || (isLeave ? '特休' : ''),
-              leaveAmount: safeParseFloat(row.leaveAmount || (isLeave ? 1 : 0)),
+              leaveAmount: safeParseFloat(row.leaveAmount || row['leaveAmount'] || (isLeave ? 1 : 0)),
               travelEnabled,
-              isHoliday: String(row.isHoliday || '').toUpperCase() === 'TRUE' || row.isHoliday === true,
+              isHoliday: String(row.isHoliday || row['isHoliday'] || '').toUpperCase() === 'TRUE' || row.isHoliday === true,
               __id: 'rec_' + Math.random().toString(36).substr(2, 9) + '_' + index
             };
           } catch (e) {
