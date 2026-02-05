@@ -77,8 +77,10 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true }) {
         window.addEventListener('touchend', handleEnd)
     }
 
-    const otHours = settings ? calculateOTHours(endTime, settings.rules.standardEndTime) : 0;
-    const dailySalary = settings ? calculateDailySalary({ ...record, endTime, otHours, isHoliday, isLeave }, settings) : 0;
+    const otHoursRaw = settings ? calculateOTHours(endTime, settings.rules.standardEndTime) : 0;
+    const otHours = isNaN(otHoursRaw) ? 0 : otHoursRaw;
+    const dailySalaryRaw = settings ? calculateDailySalary({ ...record, endTime, otHours, isHoliday, isLeave }, settings) : 0;
+    const dailySalary = isNaN(dailySalaryRaw) ? 0 : dailySalaryRaw;
 
     const toggleStatus = (type) => {
         let update = {};
@@ -100,6 +102,23 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true }) {
             isHoliday,
             isLeave,
             ...update
+        });
+    };
+
+    const cycleCountry = (e) => {
+        e.stopPropagation();
+        const sequence = ['', '印度', '越南', '大陸'];
+        const currentIndex = sequence.indexOf(travelCountry);
+        const nextIndex = (currentIndex + 1) % sequence.length;
+        const newVal = sequence[nextIndex];
+        setTravelCountry(newVal);
+        onUpdate({
+            date: day,
+            endTime,
+            otHours,
+            travelCountry: newVal,
+            isHoliday,
+            isLeave
         });
     };
 
@@ -154,7 +173,6 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true }) {
                     </span>
 
                     {/* Collapsed Info */}
-                    {/* Collapsed Info */}
                     {!isExpanded && (
                         <div className="mt-2 space-y-1.5">
                             <span className="text-[11px] font-black text-gray-700 block">
@@ -193,26 +211,36 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true }) {
                         className="mt-6 pt-6 border-t border-gray-100 space-y-6 overflow-hidden"
                     >
                         {/* Status Toggles */}
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                             <button
                                 onClick={(e) => { e.stopPropagation(); toggleStatus('holiday'); }}
                                 className={cn(
-                                    "flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex flex-col items-center gap-1",
+                                    "py-3 rounded-2xl text-[9px] font-black uppercase tracking-tighter transition-all flex flex-col items-center gap-1",
                                     isHoliday ? "neumo-pressed text-orange-500 bg-orange-50/50" : "neumo-raised text-gray-400"
                                 )}
                             >
-                                <Palmtree size={16} />
-                                國定假日
+                                <Palmtree size={14} />
+                                假日
                             </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); toggleStatus('leave'); }}
                                 className={cn(
-                                    "flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex flex-col items-center gap-1",
+                                    "py-3 rounded-2xl text-[9px] font-black uppercase tracking-tighter transition-all flex flex-col items-center gap-1",
                                     isLeave ? "neumo-pressed text-indigo-500 bg-indigo-50/50" : "neumo-raised text-gray-400"
                                 )}
                             >
-                                <Moon size={16} />
+                                <Moon size={14} />
                                 請假
+                            </button>
+                            <button
+                                onClick={cycleCountry}
+                                className={cn(
+                                    "py-3 rounded-2xl text-[9px] font-black uppercase tracking-tighter transition-all flex flex-col items-center gap-1",
+                                    travelCountry ? "neumo-pressed text-green-600 bg-green-50/50" : "neumo-raised text-gray-400"
+                                )}
+                            >
+                                <MapPin size={14} />
+                                {travelCountry ? getCountryCode(travelCountry) : '出差'}
                             </button>
                         </div>
 
@@ -222,7 +250,7 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true }) {
                                 onMouseDown={(e) => { e.stopPropagation(); handleDragStart(e); }}
                                 onTouchStart={(e) => { e.stopPropagation(); handleDragStart(e); }}
                             >
-                                <span className="text-3xl font-black text-neumo-brand tabular-nums mb-1">{endTime}</span>
+                                <span className="text-3xl font-black text-neumo-brand tabular-nums mb-1">{endTime || '18:00'}</span>
                                 <div className="flex flex-col items-center opacity-30 select-none pointer-events-none">
                                     <ChevronUp size={12} className="-mb-1" />
                                     <div className="text-[8px] font-black uppercase tracking-[0.2em]">拖曳調整時間</div>
@@ -236,25 +264,6 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true }) {
                                 )}
                             </div>
                         )}
-
-                        <div className="grid grid-cols-2 gap-2">
-                            {countries.map(c => (
-                                <button
-                                    key={c.value}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setTravelCountry(c.value);
-                                        onUpdate({ date: day, endTime, otHours, travelCountry: c.value, isHoliday, isLeave });
-                                    }}
-                                    className={cn(
-                                        "py-2.5 rounded-xl text-[10px] font-black transition-all",
-                                        travelCountry === c.value ? "neumo-pressed text-green-600 bg-green-50/50" : "neumo-raised text-gray-400"
-                                    )}
-                                >
-                                    {c.label}
-                                </button>
-                            ))}
-                        </div>
 
                         <div className="grid grid-cols-2 gap-3 pt-2">
                             <div className="p-3 neumo-raised rounded-2xl">

@@ -24,39 +24,53 @@ const defaultSettings = {
  * Calculates OT hours based on end time and standard end time
  */
 export const calculateOTHours = (endTimeStr, standardEndTimeStr = "18:00") => {
-    if (!endTimeStr) return 0;
+    if (!endTimeStr || typeof endTimeStr !== 'string') return 0;
+    if (!standardEndTimeStr || typeof standardEndTimeStr !== 'string') standardEndTimeStr = "18:00";
 
-    const [h1, m1] = standardEndTimeStr.split(':').map(Number);
-    const [h2, m2] = endTimeStr.split(':').map(Number);
+    try {
+        const parts1 = standardEndTimeStr.split(':');
+        const parts2 = endTimeStr.split(':');
 
-    const startMinutes = h1 * 60 + m1;
-    const endMinutes = h2 * 60 + m2;
+        if (parts1.length < 2 || parts2.length < 2) return 0;
 
-    const diff = endMinutes - startMinutes;
-    return Math.max(0, diff / 60);
+        const [h1, m1] = parts1.map(Number);
+        const [h2, m2] = parts2.map(Number);
+
+        if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
+
+        const startMinutes = h1 * 60 + m1;
+        const endMinutes = h2 * 60 + m2;
+
+        const diff = endMinutes - startMinutes;
+        return Math.max(0, diff / 60);
+    } catch (e) {
+        return 0;
+    }
 };
 
 /**
  * Calculates estimated daily salary
  */
 export const calculateDailySalary = (record, settings) => {
-    if (!settings) return 0;
+    if (!settings || !settings.salary) return 0;
     if (record.isLeave) return 0;
 
-    const daySalary = settings.salary.baseMonthly / 30;
-    const otHours = record.otHours || 0;
+    const baseMonthly = settings.salary.baseMonthly || 0;
+    const hourlyRate = settings.salary.hourlyRate || (baseMonthly / 30 / 8);
+    const daySalary = baseMonthly / 30;
+    const otHours = parseFloat(record.otHours) || 0;
 
     // Simplified OT calculation: first 2 hours at ot1, rest at ot2
     let otPay = 0;
     if (otHours > 0) {
-        const rate1 = settings.rules.ot1 || 1.34;
-        const rate2 = settings.rules.ot2 || 1.67;
+        const rate1 = settings.rules?.ot1 || 1.34;
+        const rate2 = settings.rules?.ot2 || 1.67;
 
         if (otHours <= 2) {
-            otPay = otHours * settings.salary.hourlyRate * rate1;
+            otPay = otHours * hourlyRate * rate1;
         } else {
-            otPay = (2 * settings.salary.hourlyRate * rate1) +
-                ((otHours - 2) * settings.salary.hourlyRate * rate2);
+            otPay = (2 * hourlyRate * rate1) +
+                ((otHours - 2) * hourlyRate * rate2);
         }
     }
 
@@ -66,10 +80,11 @@ export const calculateDailySalary = (record, settings) => {
     // Travel allowance
     let travelAllowance = 0;
     if (record.travelCountry) {
-        travelAllowance = (settings.allowance.tripDaily || 50) * (settings.allowance.exchangeRate || 32.5);
+        travelAllowance = (settings.allowance?.tripDaily || 50) * (settings.allowance?.exchangeRate || 32.5);
     }
 
-    return (daySalary * multiplier) + otPay + travelAllowance;
+    const total = (daySalary * multiplier) + otPay + travelAllowance;
+    return isNaN(total) ? 0 : total;
 };
 
 const GIST_ID = '7ce68f2145a8c8aa4eabe5127f351f71';
