@@ -101,6 +101,19 @@ function DayCard({ day, record, onUpdate }) {
         });
     };
 
+    const getCountryCode = (name) => {
+        const mapping = {
+            '印度': 'IN',
+            'India': 'IN',
+            '越南': 'VN',
+            'Vietnam': 'VN',
+            '大陸': 'CN',
+            '中國': 'CN',
+            'China': 'CN'
+        };
+        return mapping[name] || name;
+    };
+
     return (
         <motion.div
             layout
@@ -109,7 +122,7 @@ function DayCard({ day, record, onUpdate }) {
                 isToday(day) && "border-2 border-neumo-brand/30",
                 isHoliday && "bg-orange-50/50",
                 isLeave && "opacity-60",
-                isExpanded ? "col-span-1 md:col-span-2" : "col-span-1"
+                "col-span-1" // Always col-span-1 to keep 7 columns
             )}
         >
             <div
@@ -142,7 +155,7 @@ function DayCard({ day, record, onUpdate }) {
                     {country && (
                         <div className="flex items-center gap-1 bg-green-500/10 px-2 py-0.5 rounded-full">
                             <MapPin size={12} className="text-green-600" />
-                            <span className="text-xs font-bold text-green-600">{country}</span>
+                            <span className="text-xs font-bold text-green-600">{getCountryCode(country)}</span>
                         </div>
                     )}
                 </div>

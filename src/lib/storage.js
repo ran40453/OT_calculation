@@ -178,6 +178,34 @@ export const syncSettingsToSheets = async (settings) => {
     }
 };
 
+/**
+ * Test connectivity to Google Sheets API
+ */
+export const testConnection = async () => {
+    try {
+        console.log('Testing connection to:', SHEET_API_URL);
+        const response = await fetch(`${SHEET_API_URL}?api=1`, { method: 'GET' });
+        console.log('Response status:', response.status);
+
+        if (!response.ok) {
+            return { ok: false, status: response.status, error: `HTTP ${response.status}` };
+        }
+
+        const text = await response.text();
+        console.log('Raw response:', text.slice(0, 100));
+
+        try {
+            const json = JSON.parse(text);
+            return { ok: true, status: response.status, data: json };
+        } catch (e) {
+            return { ok: false, status: response.status, error: 'Invalid JSON response', raw: text.slice(0, 100) };
+        }
+    } catch (error) {
+        console.error('Connection test failed:', error);
+        return { ok: false, error: error.message || 'Network error' };
+    }
+};
+
 export const loadSettings = () => {
     const settings = localStorage.getItem(SETTINGS_KEY);
     return settings ? JSON.parse(settings) : defaultSettings;

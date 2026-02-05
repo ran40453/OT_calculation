@@ -1,15 +1,25 @@
 import React, { useState, useEffect } from 'react'
 import { Save, RefreshCw, DollarSign, Calculator, Briefcase, Calendar as CalendarIcon } from 'lucide-react'
-import { loadSettings, saveSettings, syncSettingsToSheets } from '../lib/storage'
+import { loadSettings, saveSettings, syncSettingsToSheets, testConnection } from '../lib/storage'
 import { cn } from '../lib/utils'
 
 function SettingsPage() {
     const [settings, setSettings] = useState(null)
     const [isSaving, setIsSaving] = useState(false)
+    const [testResult, setTestResult] = useState(null)
+    const [isTesting, setIsTesting] = useState(false)
 
     useEffect(() => {
         setSettings(loadSettings())
     }, [])
+
+    const handleTestConnection = async () => {
+        setIsTesting(true);
+        setTestResult(null);
+        const result = await testConnection();
+        setTestResult(result);
+        setIsTesting(false);
+    };
 
     if (!settings) return null
 
@@ -117,16 +127,41 @@ function SettingsPage() {
                     </div>
                 ))}
 
-                {/* Leave Management Placeholder */}
+                {/* System Connectivity Section */}
                 <div className="neumo-card space-y-6">
                     <div className="flex items-center gap-3">
                         <div className="p-2 neumo-pressed rounded-xl text-gray-500">
-                            <CalendarIcon size={20} />
+                            <RefreshCw size={20} className={cn(isTesting && "animate-spin")} />
                         </div>
-                        <h3 className="text-lg font-black italic">特休管理</h3>
+                        <h3 className="text-lg font-black italic">系統連線診斷</h3>
                     </div>
-                    <div className="neumo-pressed rounded-2xl p-6 text-center">
-                        <p className="text-xs text-gray-400 font-bold uppercase">Leave management coming soon</p>
+
+                    <div className="space-y-4">
+                        <button
+                            onClick={handleTestConnection}
+                            disabled={isTesting}
+                            className="neumo-button w-full py-3 text-xs font-black uppercase text-gray-600"
+                        >
+                            {isTesting ? '正在測試中...' : '測試 Google Sheets 連線'}
+                        </button>
+
+                        {testResult && (
+                            <div className={cn(
+                                "neumo-pressed rounded-2xl p-4 text-xs font-bold break-all",
+                                testResult.ok ? "text-green-600" : "text-red-500"
+                            )}>
+                                <p className="uppercase tracking-widest mb-1 underline">測試結果:</p>
+                                <p>{testResult.ok ? '✅ 連線成功！' : `❌ 失敗: ${testResult.error}`}</p>
+                                {testResult.status && <p className="mt-1">狀態碼: {testResult.status}</p>}
+                                {testResult.raw && <p className="mt-1 opacity-50 italic">Raw: {testResult.raw}</p>}
+                            </div>
+                        )}
+
+                        <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                            <p className="text-[10px] text-blue-600 font-bold leading-relaxed">
+                                ※ 如果測試失敗，請確認 `vercel.json` 中的網址是否與 Apps Script 的最新部署 ID 一致。
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
