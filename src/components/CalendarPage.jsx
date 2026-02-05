@@ -8,6 +8,7 @@ import DayCard from './DayCard'
 function CalendarPage() {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [records, setRecords] = useState([])
+    const [focusedDay, setFocusedDay] = useState(null)
 
     useEffect(() => {
         setRecords(loadData())
@@ -21,6 +22,12 @@ function CalendarPage() {
     const calendarStart = startOfWeek(monthStart)
     const calendarEnd = endOfWeek(monthEnd)
     const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
+
+    // Group days into weeks
+    const weeks = []
+    for (let i = 0; i < days.length; i += 7) {
+        weeks.push(days.slice(i, i + 7))
+    }
 
     const getRecordForDay = (day) => {
         return records.find(r => isSameDay(new Date(r.date), day))
@@ -52,29 +59,32 @@ function CalendarPage() {
                 </button>
             </div>
 
-            {/* Calendar Grid */}
-            <div className="space-y-4">
-                {/* Weekday Labels (Desktop Only) */}
-                <div className="hidden md:grid grid-cols-7 gap-4 mb-2">
+            {/* Calendar Rows */}
+            <div className="space-y-3 md:space-y-4 pb-12">
+                {/* Weekday Labels (Desktop) */}
+                <div className="hidden md:flex gap-4 mb-2">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        <div key={day} className="flex-1 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
                             {day}
                         </div>
                     ))}
                 </div>
 
-                {/* Grid Container */}
-                <div className="grid grid-cols-1 md:grid-cols-7 gap-3 md:gap-4 pb-12">
-                    {days.map((day) => (
-                        <DayCard
-                            key={day.toString()}
-                            day={day}
-                            isCurrentMonth={isSameMonth(day, monthStart)}
-                            record={getRecordForDay(day)}
-                            onUpdate={handleUpdateRecord}
-                        />
-                    ))}
-                </div>
+                {weeks.map((week, weekIdx) => (
+                    <div key={weekIdx} className="flex flex-col md:flex-row gap-3 md:gap-4 min-h-[100px]">
+                        {week.map((day) => (
+                            <DayCard
+                                key={format(day, 'yyyy-MM-dd')}
+                                day={day}
+                                isCurrentMonth={isSameMonth(day, monthStart)}
+                                record={getRecordForDay(day)}
+                                onUpdate={handleUpdateRecord}
+                                isFocused={focusedDay && isSameDay(day, focusedDay)}
+                                onFocus={() => setFocusedDay(isSameDay(day, focusedDay) ? null : day)}
+                            />
+                        ))}
+                    </div>
+                ))}
             </div>
         </div>
     )
