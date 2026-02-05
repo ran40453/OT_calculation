@@ -39,6 +39,7 @@ function CalendarPage() {
     }
 
     // Generate options for selectors
+    const today = new Date()
     const currentYear = today.getFullYear()
     const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i)
     const months = Array.from({ length: 12 }, (_, i) => i)
