@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { format, startOfYear, endOfYear, eachMonthOfInterval, subYears, isAfter, differenceInCalendarMonths, isSameMonth, subDays, isWithinInterval } from 'date-fns'
+import { format, startOfYear, endOfYear, startOfMonth, endOfMonth, eachMonthOfInterval, subYears, isAfter, differenceInCalendarMonths, isSameMonth, subDays, isWithinInterval } from 'date-fns'
 import { TrendingUp, Clock, CreditCard, Calendar, Globe, ArrowUpRight, Coffee, Trophy } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
