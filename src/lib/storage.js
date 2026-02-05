@@ -144,9 +144,8 @@ export const calculateDailySalary = (record, settings) => {
  */
 export const calculateCompLeaveUnits = (record) => {
     if (record.otType === 'leave' && record.otHours) {
-        // Standardized: 1:1 or 1:0.5? Previously was 0.5. Keeping user preferences if mentioned.
-        // User didn't specify units change, so keeping 0.5 for now.
-        return parseFloat(record.otHours) * 0.5;
+        // User requested: 以 1 為單位，半小時不計入
+        return Math.floor(parseFloat(record.otHours));
     }
     return 0;
 };

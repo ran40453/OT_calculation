@@ -9,10 +9,17 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
     const [country, setCountry] = useState('')
     const [isHoliday, setIsHoliday] = useState(false)
     const [isLeave, setIsLeave] = useState(false)
-    const [otHours, setOtHours] = useState(0)
-    const [otType, setOtType] = useState('pay') // 'pay' or 'leave'
+    const [endTime, setEndTime] = useState('17:30')
+    const [otType, setOtType] = useState('pay')
+    const [isDragging, setIsDragging] = useState(false)
 
     if (!isOpen) return null
+
+    const otHours = (() => {
+        const [h1, m1] = "17:30".split(':').map(Number);
+        const [h2, m2] = endTime.split(':').map(Number);
+        return Math.max(0, (h2 * 60 + m2 - (h1 * 60 + m1)) / 60);
+    })();
 
     const handleSubmit = () => {
         onAdd({
@@ -20,10 +27,41 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
             travelCountry: country,
             isHoliday,
             isLeave,
-            otHours: parseFloat(otHours) || 0,
-            otType
+            otHours: otHours,
+            otType: otHours >= 0.5 ? otType : 'pay',
+            endTime: endTime
         })
         onClose()
+    }
+
+    const handleDragStart = (e) => {
+        setIsDragging(true)
+        const startY = e.clientY || (e.touches && e.touches[0].clientY)
+        const [h, m] = endTime.split(':').map(Number)
+        const startMins = h * 60 + m
+
+        const handleMove = (moveEvent) => {
+            const currentY = moveEvent.clientY || (moveEvent.touches && moveEvent.touches[0].clientY)
+            const diff = startY - currentY
+            const minuteDiff = Math.round(diff / 5) * 15
+            const totalMins = Math.max(0, Math.min(23 * 60 + 45, startMins + minuteDiff))
+            const nh = Math.floor(totalMins / 60)
+            const nm = totalMins % 60
+            setEndTime(`${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`)
+        }
+
+        const handleEnd = () => {
+            setIsDragging(false)
+            window.removeEventListener('mousemove', handleMove)
+            window.removeEventListener('mouseup', handleEnd)
+            window.removeEventListener('touchmove', handleMove)
+            window.removeEventListener('touchend', handleEnd)
+        }
+
+        window.addEventListener('mousemove', handleMove)
+        window.addEventListener('mouseup', handleEnd)
+        window.addEventListener('touchmove', handleMove)
+        window.addEventListener('touchend', handleEnd)
     }
 
     return (
@@ -83,27 +121,35 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
                             </select>
                         </div>
 
-                        {/* OT and Type */}
-                        <div className="space-y-4 pt-2">
-                            <div className="flex gap-3">
-                                <div className="flex-1 space-y-2">
+                        {/* Time Picker and Type */}
+                        {!isLeave && (
+                            <div className="space-y-4 pt-2">
+                                <div className="space-y-2">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                        <Clock size={12} /> 加班時數
+                                        <Clock size={12} /> 下班時間 (17:30 起算)
                                     </label>
-                                    <input
-                                        type="number"
-                                        step="0.5"
-                                        value={otHours}
-                                        onChange={(e) => setOtHours(e.target.value)}
-                                        className="neumo-input w-full h-12 font-bold px-4"
-                                    />
+                                    <div
+                                        className="h-24 neumo-pressed rounded-3xl flex flex-col items-center justify-center relative cursor-ns-resize overflow-hidden"
+                                        onMouseDown={handleDragStart}
+                                        onTouchStart={handleDragStart}
+                                    >
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-3xl font-black text-[#202731]">{endTime}</span>
+                                            <span className="text-sm font-black text-neumo-brand">{otHours.toFixed(1)}h</span>
+                                        </div>
+                                        <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                                            {otHours < 0.5 ? '時數不足 0.5H' : '拖曳調整時間'}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="flex-1 space-y-2">
+
+                                <div className={cn("space-y-2 transition-opacity", otHours < 0.5 && "opacity-40 pointer-events-none grayscale")}>
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                        <CreditCard size={12} /> 類型
+                                        <CreditCard size={12} /> 加班類型
                                     </label>
                                     <div className="flex gap-1 neumo-pressed p-1 rounded-2xl h-12">
                                         <button
+                                            disabled={otHours < 0.5}
                                             onClick={() => setOtType('pay')}
                                             className={cn(
                                                 "flex-1 rounded-xl text-[10px] font-black transition-all",
@@ -113,6 +159,7 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
                                             加班費
                                         </button>
                                         <button
+                                            disabled={otHours < 0.5}
                                             onClick={() => setOtType('leave')}
                                             className={cn(
                                                 "flex-1 rounded-xl text-[10px] font-black transition-all",
@@ -124,7 +171,7 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Status Toggles */}
                         <div className="grid grid-cols-2 gap-3">

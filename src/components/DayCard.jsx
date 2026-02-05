@@ -16,6 +16,9 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
 
     const dragStartY = useRef(0)
     const startMinutes = useRef(0)
+    const currentEndTimeRef = useRef(endTime)
+
+    useEffect(() => { currentEndTimeRef.current = endTime }, [endTime])
 
     const isSunday = getDay(day) === 0;
 
@@ -58,7 +61,9 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
             const totalMins = Math.max(0, Math.min(23 * 60 + 45, startMinutes.current + minuteDiff))
             const nh = Math.floor(totalMins / 60)
             const nm = totalMins % 60
-            setEndTime(`${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`)
+            const nextTime = `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
+            setEndTime(nextTime)
+            currentEndTimeRef.current = nextTime
         }
 
         const handleEnd = () => {
@@ -67,7 +72,7 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
             window.removeEventListener('mouseup', handleEnd)
             window.removeEventListener('touchmove', handleMove)
             window.removeEventListener('touchend', handleEnd)
-            syncUpdate({ endTime: endTime })
+            syncUpdate({ endTime: currentEndTimeRef.current })
         }
 
         window.addEventListener('mousemove', handleMove)
@@ -239,37 +244,44 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
                                         </button>
                                     </div>
 
-                                    {/* Comp Leave Units if applicable */}
-                                    {otType === 'leave' && (
-                                        <div className="flex-1 neumo-raised p-3 rounded-2xl text-center">
-                                            <p className="text-[7px] font-black text-indigo-400 uppercase">補休單位</p>
-                                            <p className="text-xl font-black text-indigo-600 leading-none">{compUnits.toFixed(1)}</p>
+                                    {/* Unified Sub-card Layout (Same size for both modes) */}
+                                    <div className={cn(
+                                        "flex-1 neumo-pressed p-3 rounded-2xl flex flex-col justify-center items-center h-[60px] transition-all duration-300",
+                                        otType === 'leave' ? "bg-indigo-50/20" : "bg-green-50/20"
+                                    )}>
+                                        <p className={cn(
+                                            "text-[7px] font-black uppercase tracking-widest mb-1",
+                                            otType === 'leave' ? "text-indigo-400" : "text-green-600"
+                                        )}>
+                                            {otType === 'leave' ? '今日補休' : '今日加班費'}
+                                        </p>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className={cn(
+                                                "text-xl font-black tabular-nums",
+                                                otType === 'leave' ? "text-indigo-600" : "text-green-700"
+                                            )}>
+                                                {otType === 'leave' ? compUnits.toFixed(0) : `${Math.round(dailySalary).toLocaleString()}`}
+                                            </span>
+                                            <span className="text-[8px] font-bold text-gray-400 uppercase">
+                                                {otType === 'leave' ? '單' : 'TWD'}
+                                            </span>
                                         </div>
-                                    )}
-                                </div>
-
-                                {/* Income Sub-card */}
-                                {otType === 'pay' && !isLeave && (
-                                    <div className="neumo-pressed p-4 rounded-2xl flex justify-between items-center bg-green-50/20">
-                                        <div className="flex items-center gap-2 text-green-600">
-                                            <CreditCard size={14} />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">今日所得</span>
-                                        </div>
-                                        <span className="text-lg font-black text-green-700 tabular-nums">
-                                            ${Math.round(dailySalary).toLocaleString()}
-                                        </span>
                                     </div>
-                                )}
+                                </div>
                             </div>
                         ) : (
-                            <div className="neumo-pressed p-4 rounded-2xl flex justify-center items-center gap-2 opacity-40 grayscale">
+                            <div className="neumo-pressed p-4 rounded-2xl flex justify-center items-center gap-2 opacity-40 grayscale h-[60px]">
                                 <Clock size={14} className="text-gray-400" />
                                 <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">時數不足 0.5H 不計入加班</span>
                             </div>
                         )}
 
                         <button
-                            onClick={(e) => { e.stopPropagation(); onFocus(); }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                syncUpdate(); // Final sync before closing
+                                onFocus();
+                            }}
                             className="neumo-button w-full h-12 flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-neumo-brand"
                         >
                             <Check size={16} strokeWidth={3} />
