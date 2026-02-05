@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns'
 import { TrendingUp, Globe, Wallet, Clock, ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { loadData, loadSettings } from '../lib/storage'
+import { loadData, loadSettings, fetchRecordsFromGist } from '../lib/storage'
 import { cn } from '../lib/utils'
 
 function Dashboard() {
@@ -11,8 +11,13 @@ function Dashboard() {
     const today = new Date()
 
     useEffect(() => {
-        setData(loadData())
-        setSettings(loadSettings())
+        const localData = loadData();
+        setData(localData);
+        setSettings(loadSettings());
+
+        fetchRecordsFromGist().then(remoteRecords => {
+            if (remoteRecords) setData(remoteRecords);
+        });
     }, [])
 
     if (!settings) return null
@@ -25,8 +30,8 @@ function Dashboard() {
         return d >= currentMonthStart && d <= currentMonthEnd
     })
 
-    const totalOT = currentMonthRecords.reduce((sum, r) => sum + (r.otHours || 0), 0)
-    const tripCount = currentMonthRecords.filter(r => r.country).length
+    const totalOT = currentMonthRecords.reduce((sum, r) => sum + (parseFloat(r.otHours) || 0), 0)
+    const tripCount = currentMonthRecords.filter(r => r.travelCountry).length
     const tripAllowance = tripCount * settings.allowance.tripDaily * settings.allowance.exchangeRate
     const otIncome = totalOT * settings.salary.hourlyRate * 1.67 // Simplified
     const estimatedTotal = settings.salary.baseMonthly + otIncome + tripAllowance
@@ -93,11 +98,11 @@ function Dashboard() {
                                         <span className="text-sm font-black">{format(new Date(r.date), 'dd')}</span>
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-sm">{r.country || '加班'}紀錄</h4>
+                                        <h4 className="font-bold text-sm">{r.travelCountry || '加班'}紀錄</h4>
                                         <p className="text-xs text-gray-500 font-bold">{r.otHours} hours overtime</p>
                                     </div>
                                 </div>
-                                {r.country && (
+                                {r.travelCountry && (
                                     <div className="bg-green-500/10 text-green-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">
                                         Travel
                                     </div>

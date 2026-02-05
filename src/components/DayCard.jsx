@@ -26,7 +26,16 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true }) {
     // Initialize from record when it changes
     useEffect(() => {
         if (record) {
-            setEndTime(record.endTime || '18:00')
+            let rawTime = record.endTime || '18:00';
+            // Solve 1899-12-30 issue: if it contains 'T' or looks like a ISO date, extract just HH:mm
+            if (rawTime.includes('T')) {
+                try {
+                    rawTime = format(new Date(rawTime), 'HH:mm');
+                } catch (e) {
+                    rawTime = '18:00';
+                }
+            }
+            setEndTime(rawTime)
             setTravelCountry(record.travelCountry || '')
             setIsHoliday(record.isHoliday || false)
             setIsLeave(record.isLeave || false)
@@ -172,32 +181,41 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true }) {
                         {format(day, 'dd')}
                     </span>
 
-                    {/* Collapsed Info */}
+                    {/* Collapsed Info - Move to absolute right or use space-between */}
                     {!isExpanded && (
-                        <div className="mt-2 space-y-1.5">
-                            <span className="text-[11px] font-black text-gray-700 block">
-                                ${Math.round(dailySalary).toLocaleString()}
-                            </span>
-                            <div className="flex flex-col gap-1">
-                                {otHours > 0 && (
-                                    <div className="flex items-center gap-1 text-[8px] font-black text-neumo-brand">
-                                        <Clock size={10} strokeWidth={3} />
-                                        <span>{otHours.toFixed(1)}h</span>
-                                    </div>
-                                )}
-                                {travelCountry && (
-                                    <div className="flex items-center gap-1 text-[8px] font-black text-green-600">
-                                        <MapPin size={10} strokeWidth={3} />
-                                        <span>{getCountryCode(travelCountry)}</span>
-                                    </div>
-                                )}
-                            </div>
+                        <div className="mt-2 space-y-1">
+                            {travelCountry && (
+                                <div className="flex items-center gap-1 text-[8px] font-black text-green-600">
+                                    <MapPin size={10} strokeWidth={3} />
+                                    <span>{getCountryCode(travelCountry)}</span>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
 
-                <div className="text-gray-300">
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                <div className="flex flex-col items-end gap-1">
+                    <div className="text-gray-300">
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </div>
+                    {!isExpanded && (
+                        <div className="flex flex-col items-end">
+                            {otHours > 0 ? (
+                                <div className="flex flex-col items-end">
+                                    <span className="text-xl font-black text-neumo-brand leading-none">
+                                        {otHours.toFixed(1)}<span className="text-[10px] ml-0.5">h</span>
+                                    </span>
+                                    <span className="text-[9px] font-black text-gray-400 mt-1">
+                                        ${Math.round(dailySalary).toLocaleString()}
+                                    </span>
+                                </div>
+                            ) : (
+                                <span className="text-[11px] font-black text-gray-400">
+                                    ${Math.round(dailySalary).toLocaleString()}
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 

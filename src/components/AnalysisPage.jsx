@@ -13,7 +13,7 @@ import {
 } from 'chart.js'
 import { Bar, Line, Pie } from 'react-chartjs-2'
 import { format, subMonths, eachMonthOfInterval, startOfYear, endOfYear } from 'date-fns'
-import { loadData } from '../lib/storage'
+import { loadData, fetchRecordsFromGist } from '../lib/storage'
 
 ChartJS.register(
     CategoryScale,
@@ -31,7 +31,10 @@ function AnalysisPage() {
     const [data, setData] = useState([])
 
     useEffect(() => {
-        setData(loadData())
+        setData(loadData());
+        fetchRecordsFromGist().then(remoteRecords => {
+            if (remoteRecords) setData(remoteRecords);
+        });
     }, [])
 
     const currentYear = new Date().getFullYear()
