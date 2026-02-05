@@ -16,7 +16,55 @@ const defaultSettings = {
         ot1: 1.34,
         ot2: 1.67,
         ot3: 2.0,
+        standardEndTime: "18:00", // Default off-work time
     }
+};
+
+/**
+ * Calculates OT hours based on end time and standard end time
+ */
+export const calculateOTHours = (endTimeStr, standardEndTimeStr = "18:00") => {
+    if (!endTimeStr) return 0;
+
+    const [h1, m1] = standardEndTimeStr.split(':').map(Number);
+    const [h2, m2] = endTimeStr.split(':').map(Number);
+
+    const startMinutes = h1 * 60 + m1;
+    const endMinutes = h2 * 60 + m2;
+
+    const diff = endMinutes - startMinutes;
+    return Math.max(0, diff / 60);
+};
+
+/**
+ * Calculates estimated daily salary
+ */
+export const calculateDailySalary = (record, settings) => {
+    if (!settings) return 0;
+    if (record.isLeave) return 0;
+
+    const daySalary = settings.salary.baseMonthly / 30;
+    const otHours = record.otHours || 0;
+
+    // Simplified OT calculation: first 2 hours at ot1, rest at ot2
+    let otPay = 0;
+    if (otHours > 0) {
+        const rate1 = settings.rules.ot1 || 1.34;
+        const rate2 = settings.rules.ot2 || 1.67;
+
+        if (otHours <= 2) {
+            otPay = otHours * settings.salary.hourlyRate * rate1;
+        } else {
+            otPay = (2 * settings.salary.hourlyRate * rate1) +
+                ((otHours - 2) * settings.salary.hourlyRate * rate2);
+        }
+    }
+
+    // Holiday bonus? Usually double pay for the base day if it's a holiday and worked
+    // For now, let's keep it simple as requested or just add a placeholder for multiplier
+    const multiplier = record.isHoliday ? 2 : 1;
+
+    return (daySalary * multiplier) + otPay;
 };
 
 export const loadData = () => {

@@ -55,6 +55,7 @@ function SettingsPage() {
             fields: [
                 { key: 'ot1', label: '平日加班倍率 1 (前 2hr)', type: 'number', step: 0.01 },
                 { key: 'ot2', label: '平日加班倍率 2 (後 2hr)', type: 'number', step: 0.01 },
+                { key: 'standardEndTime', label: '預設下班時間 (如 18:00)', type: 'text' },
             ]
         }
     ]
@@ -100,7 +101,10 @@ function SettingsPage() {
                                         disabled={field.disabled}
                                         step={field.step || 1}
                                         value={settings[section.id][field.key]}
-                                        onChange={(e) => updateSetting(section.id, field.key, parseFloat(e.target.value))}
+                                        onChange={(e) => {
+                                            const val = field.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+                                            updateSetting(section.id, field.key, val);
+                                        }}
                                         className={cn(
                                             "neumo-input h-11 text-sm font-bold",
                                             field.disabled && "opacity-50 cursor-not-allowed"
