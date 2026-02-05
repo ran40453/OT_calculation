@@ -5,17 +5,27 @@ import CalendarPage from './components/CalendarPage'
 import AnalysisPage from './components/AnalysisPage'
 import SettingsPage from './components/SettingsPage'
 import Tabbar from './components/Tabbar'
+import AddRecordModal from './components/AddRecordModal'
 
-import { fetchRecordsFromSheets, fetchSettingsFromSheets } from './lib/storage'
+import { fetchRecordsFromSheets, fetchSettingsFromSheets, addOrUpdateRecord, loadSettings } from './lib/storage'
 
 function App() {
     const [activeTab, setActiveTab] = useState('home')
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [settings, setSettings] = useState(null)
 
     React.useEffect(() => {
         // Initial sync from Google Sheets
         fetchRecordsFromSheets();
-        fetchSettingsFromSheets();
+        fetchSettingsFromSheets().then(s => setSettings(s));
+        setSettings(loadSettings())
     }, []);
+
+    const handleAddRecord = (record) => {
+        addOrUpdateRecord(record)
+        // Optionally reload data or trigger sync
+        window.location.reload() // Simple way to refresh all views for now, or use a context/global state
+    }
 
     const renderPage = () => {
         switch (activeTab) {
@@ -49,6 +59,14 @@ function App() {
                 tabs={tabs}
                 activeTab={activeTab}
                 onChange={setActiveTab}
+                onAddClick={() => setIsModalOpen(true)}
+            />
+
+            <AddRecordModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onAdd={handleAddRecord}
+                settings={settings}
             />
         </div>
     )

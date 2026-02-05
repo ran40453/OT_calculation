@@ -62,7 +62,9 @@ export const calculateDailySalary = (record, settings) => {
 
     // Simplified OT calculation: first 2 hours at ot1, rest at ot2
     let otPay = 0;
-    if (otHours > 0) {
+    const otType = record.otType || 'pay';
+
+    if (otHours > 0 && otType === 'pay') {
         const rate1 = settings.rules?.ot1 || 1.34;
         const rate2 = settings.rules?.ot2 || 1.67;
 
@@ -80,11 +82,22 @@ export const calculateDailySalary = (record, settings) => {
     // Travel allowance
     let travelAllowance = 0;
     if (record.travelCountry) {
-        travelAllowance = (settings.allowance?.tripDaily || 50) * (settings.allowance?.exchangeRate || 32.5);
+        const rate = settings.liveRate || settings.allowance?.exchangeRate || 32.5;
+        travelAllowance = (settings.allowance?.tripDaily || 50) * rate;
     }
 
     const total = (daySalary * multiplier) + otPay + travelAllowance;
     return isNaN(total) ? 0 : total;
+};
+
+/**
+ * Calculates comp leave units (加班1小時增加0.5單位)
+ */
+export const calculateCompLeaveUnits = (record) => {
+    if (record.otType === 'leave' && record.otHours) {
+        return parseFloat(record.otHours) * 0.5;
+    }
+    return 0;
 };
 
 const GIST_ID = '7ce68f2145a8c8aa4eabe5127f351f71';

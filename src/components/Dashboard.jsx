@@ -1,9 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns'
-import { TrendingUp, Globe, Wallet, Clock, ArrowRight } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { loadData, loadSettings, fetchRecordsFromGist } from '../lib/storage'
-import { cn } from '../lib/utils'
+import { loadData, loadSettings, fetchRecordsFromGist, calculateCompLeaveUnits } from '../lib/storage'
+import { startOfYear, endOfYear, isWithinInterval } from 'date-fns'
 
 function Dashboard() {
     const [data, setData] = useState([])
@@ -24,23 +20,32 @@ function Dashboard() {
 
     const currentMonthStart = startOfMonth(today)
     const currentMonthEnd = endOfMonth(today)
+    const currentYearStart = startOfYear(today)
+    const currentYearEnd = endOfYear(today)
 
-    const currentMonthRecords = data.filter(r => {
-        const d = new Date(r.date)
-        return d >= currentMonthStart && d <= currentMonthEnd
-    })
+    const currentMonthRecords = data.filter(r => isWithinInterval(new Date(r.date), { start: currentMonthStart, end: currentMonthEnd }))
+    const currentYearRecords = data.filter(r => isWithinInterval(new Date(r.date), { start: currentYearStart, end: currentYearEnd }))
 
-    const totalOT = currentMonthRecords.reduce((sum, r) => sum + (parseFloat(r.otHours) || 0), 0)
+    const calcCompUnits = (records) => records.reduce((sum, r) => sum + calculateCompLeaveUnits(r), 0)
+    const calcLeaveDays = (records) => records.filter(r => r.isLeave).length
+
+    const totalOTValue = currentMonthRecords.reduce((sum, r) => sum + (parseFloat(r.otHours) || 0), 0)
     const tripCount = currentMonthRecords.filter(r => r.travelCountry).length
-    const tripAllowance = tripCount * settings.allowance.tripDaily * settings.allowance.exchangeRate
-    const otIncome = totalOT * settings.salary.hourlyRate * 1.67 // Simplified
-    const estimatedTotal = settings.salary.baseMonthly + otIncome + tripAllowance
+    const tripAllowance = tripCount * settings.allowance.tripDaily * (settings.allowance.exchangeRate || 32.5)
 
+    // Original Top Widgets
     const widgets = [
-        { label: '本月累計加班', value: `${totalOT}h`, icon: Clock, color: 'text-blue-500', bg: 'bg-blue-50' },
-        { label: '出差天數', value: `${tripCount}d`, icon: Globe, color: 'text-green-500', bg: 'bg-green-50' },
-        { label: '津貼估計 (TWD)', value: `+${Math.round(tripAllowance).toLocaleString()}`, icon: Wallet, color: 'text-orange-500', bg: 'bg-orange-50' },
-        { label: '預估總含薪', value: `${Math.round(estimatedTotal).toLocaleString()}`, icon: TrendingUp, color: 'text-purple-500', bg: 'bg-purple-50' },
+        { label: '本月累計加班', value: `${totalOTValue}h`, icon: Clock, color: 'text-blue-500' },
+        { label: '出差天數', value: `${tripCount}d`, icon: Globe, color: 'text-green-500' },
+        { label: '津貼估計', value: `$${Math.round(tripAllowance).toLocaleString()}`, icon: Wallet, color: 'text-orange-500' },
+        { label: '月薪估計', value: `${Math.round(settings.salary.baseMonthly + tripAllowance).toLocaleString()}`, icon: TrendingUp, color: 'text-purple-500' },
+    ]
+
+    const statsGrid = [
+        { label: '當月累計補休', value: calcCompUnits(currentMonthRecords).toFixed(1), unit: '單位', color: 'text-indigo-500' },
+        { label: '當年累計補休', value: calcCompUnits(currentYearRecords).toFixed(1), unit: '單位', color: 'text-indigo-600' },
+        { label: '當月累計請假', value: calcLeaveDays(currentMonthRecords), unit: '天', color: 'text-rose-500' },
+        { label: '當年累計請假', value: calcLeaveDays(currentYearRecords), unit: '天', color: 'text-rose-600' },
     ]
 
     return (
@@ -49,71 +54,51 @@ function Dashboard() {
                 <h1 className="text-3xl font-black tracking-tight flex items-center gap-2">
                     Dashboard <span className="text-sm font-bold bg-neumo-brand/10 text-neumo-brand px-2 py-1 rounded-lg">{format(today, 'MMMM')}</span>
                 </h1>
-                <p className="text-gray-500 text-sm font-bold tracking-widest uppercase">OT & Travel Statistics</p>
+                <p className="text-gray-500 text-xs font-bold tracking-widest uppercase italic">Efficiency & Trends</p>
             </header>
 
-            {/* Main Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {widgets.map((w, i) => (
                     <motion.div
                         key={w.label}
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="neumo-card flex flex-col items-center justify-center p-6 space-y-3"
+                        transition={{ delay: i * 0.05 }}
+                        className="neumo-card p-6 flex flex-col items-center gap-3"
                     >
-                        <div className={cn("p-3 rounded-2xl neumo-flat", w.color)}>
-                            <w.icon size={24} />
+                        <div className={cn("p-3 rounded-2xl neumo-pressed", w.color)}>
+                            <w.icon size={22} />
                         </div>
                         <div className="text-center">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{w.label}</p>
-                            <p className="text-xl font-black">{w.value}</p>
+                            <p className="text-[9px] font-black text-gray-400 border-b border-gray-100 pb-1 mb-1 uppercase tracking-widest">{w.label}</p>
+                            <p className="text-xl font-black tracking-tight">{w.value}</p>
                         </div>
                     </motion.div>
                 ))}
             </div>
 
-            {/* Recent Activity */}
             <div className="space-y-4">
-                <div className="flex justify-between items-center px-2">
-                    <h3 className="text-lg font-black italic">Recent Activity</h3>
-                    <button className="text-xs font-bold text-neumo-brand flex items-center gap-1">
-                        View All <ArrowRight size={14} />
-                    </button>
-                </div>
-
-                <div className="space-y-4">
-                    {currentMonthRecords.slice(0, 3).length > 0 ? (
-                        currentMonthRecords.slice(0, 3).reverse().map((r, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.4 + (i * 0.1) }}
-                                className="neumo-card p-4 flex justify-between items-center"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 neumo-pressed rounded-xl flex flex-col items-center justify-center">
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase">{format(new Date(r.date), 'EEE')}</span>
-                                        <span className="text-sm font-black">{format(new Date(r.date), 'dd')}</span>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-sm">{r.travelCountry || '加班'}紀錄</h4>
-                                        <p className="text-xs text-gray-500 font-bold">{r.otHours} hours overtime</p>
-                                    </div>
+                <h3 className="text-lg font-black italic px-2">累積統計庫</h3>
+                <div className="grid grid-cols-2 gap-4">
+                    {statsGrid.map((s, i) => (
+                        <motion.div
+                            key={s.label}
+                            initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="neumo-card p-5 flex justify-between items-center"
+                        >
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{s.label}</p>
+                                <div className="flex items-baseline gap-1">
+                                    <span className={cn("text-2xl font-black tabular-nums", s.color)}>{s.value}</span>
+                                    <span className="text-[10px] font-black text-gray-400 uppercase">{s.unit}</span>
                                 </div>
-                                {r.travelCountry && (
-                                    <div className="bg-green-500/10 text-green-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">
-                                        Travel
-                                    </div>
-                                )}
-                            </motion.div>
-                        ))
-                    ) : (
-                        <div className="neumo-card p-12 text-center">
-                            <p className="text-gray-400 font-bold text-sm">No recent activity this month.</p>
-                        </div>
-                    )}
+                            </div>
+                            <div className={cn("w-10 h-10 rounded-full neumo-pressed flex items-center justify-center opacity-30", s.color)}>
+                                {s.label.includes('補休') ? <Coffee size={18} /> : <Moon size={18} />}
+                            </div>
+                        </motion.div>
+                    ))}
                 </div>
             </div>
         </div>
