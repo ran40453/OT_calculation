@@ -194,11 +194,20 @@ export const testConnection = async () => {
         const text = await response.text();
         console.log('Raw response:', text.slice(0, 100));
 
+        if (text.trim().startsWith('<!DOCTYPE html>') || text.includes('google-signin')) {
+            return {
+                ok: false,
+                status: response.status,
+                error: '接收到 HTML 而非 JSON。這通常是因為 Google Apps Script 權限未設為「任何人 (Anyone)」或網址錯誤。',
+                raw: text.slice(0, 100)
+            };
+        }
+
         try {
             const json = JSON.parse(text);
             return { ok: true, status: response.status, data: json };
         } catch (e) {
-            return { ok: false, status: response.status, error: 'Invalid JSON response', raw: text.slice(0, 100) };
+            return { ok: false, status: response.status, error: '回傳格式錯誤 (Invalid JSON)', raw: text.slice(0, 100) };
         }
     } catch (error) {
         console.error('Connection test failed:', error);

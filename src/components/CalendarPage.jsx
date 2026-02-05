@@ -10,6 +10,8 @@ function CalendarPage() {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [records, setRecords] = useState([])
     const [showAddForm, setShowAddForm] = useState(false)
+    const [quickHoliday, setQuickHoliday] = useState(false)
+    const [quickLeave, setQuickLeave] = useState(false)
 
     useEffect(() => {
         setRecords(loadData())
@@ -53,60 +55,112 @@ function CalendarPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="neumo-card p-6"
+                className="neumo-card p-4 md:p-6"
             >
-                <h3 className="text-sm font-black italic mb-4 flex items-center gap-2">
-                    <Plus size={16} className="text-neumo-brand" /> 快速新增紀錄
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">日期</label>
-                        <input
-                            type="date"
-                            className="neumo-input h-10 text-sm font-bold"
-                            defaultValue={format(new Date(), 'yyyy-MM-dd')}
-                            id="quick-date"
-                        />
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                    <div className="flex items-center gap-2 min-w-max">
+                        <Plus size={18} className="text-neumo-brand" />
+                        <h3 className="text-sm font-black italic uppercase tracking-wider">快速新增</h3>
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">出差國家 (選填)</label>
-                        <input
-                            type="text"
-                            placeholder="e.g. 日本"
-                            className="neumo-input h-10 text-sm font-bold"
-                            id="quick-country"
-                        />
+
+                    <div className="flex flex-1 flex-wrap items-center gap-3 w-full">
+                        {/* Date */}
+                        <div className="flex-1 min-w-[120px]">
+                            <input
+                                type="date"
+                                className="neumo-input h-10 text-xs font-bold w-full"
+                                defaultValue={format(new Date(), 'yyyy-MM-dd')}
+                                id="quick-date"
+                            />
+                        </div>
+
+                        {/* Country Dropdown */}
+                        <div className="flex-1 min-w-[120px]">
+                            <select
+                                id="quick-country"
+                                className="neumo-input h-10 text-xs font-bold w-full bg-transparent appearance-none"
+                            >
+                                <option value="">無出差</option>
+                                <option value="印度">印度 (IN)</option>
+                                <option value="越南">越南 (VN)</option>
+                                <option value="大陸">大陸 (CN)</option>
+                            </select>
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setQuickHoliday(!quickHoliday)}
+                                className={cn(
+                                    "p-2 rounded-xl transition-all",
+                                    quickHoliday ? "neumo-pressed text-orange-500" : "neumo-raised text-gray-400"
+                                )}
+                                title="國定假日"
+                            >
+                                <Plus size={16} className={cn("transition-transform", quickHoliday && "rotate-45")} />
+                            </button>
+                            <button
+                                onClick={() => setQuickLeave(!quickLeave)}
+                                className={cn(
+                                    "p-2 rounded-xl transition-all",
+                                    quickLeave ? "neumo-pressed text-red-500" : "neumo-raised text-gray-400"
+                                )}
+                                title="請假"
+                            >
+                                <div className="w-4 h-4 flex items-center justify-center font-black text-[10px]">X</div>
+                            </button>
+                        </div>
+
+                        {/* Add Button */}
+                        <button
+                            onClick={() => {
+                                const date = document.getElementById('quick-date').value
+                                const country = document.getElementById('quick-country').value
+                                handleUpdateRecord({
+                                    date: new Date(date),
+                                    otHours: 0,
+                                    country,
+                                    isHoliday: quickHoliday,
+                                    isLeave: quickLeave
+                                })
+                                setQuickHoliday(false)
+                                setQuickLeave(false)
+                            }}
+                            className="neumo-button h-10 px-6 flex items-center justify-center gap-2 text-xs font-black text-neumo-brand ml-auto"
+                        >
+                            新增
+                        </button>
                     </div>
-                    <button
-                        onClick={() => {
-                            const date = document.getElementById('quick-date').value
-                            const country = document.getElementById('quick-country').value
-                            handleUpdateRecord({ date: new Date(date), otHours: 0, country })
-                            document.getElementById('quick-country').value = ''
-                        }}
-                        className="neumo-button h-10 flex items-center justify-center gap-2 text-sm font-black text-neumo-brand"
-                    >
-                        <Plus size={16} /> 新增
-                    </button>
                 </div>
             </motion.div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+            <div className="space-y-4">
                 {/* Weekday Labels (Desktop) */}
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="hidden md:block text-center text-xs font-bold text-gray-500 uppercase pb-2">
-                        {day}
-                    </div>
-                ))}
+                <div className="grid grid-cols-7 gap-4 mb-2">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <div key={day} className="text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                            {day}
+                        </div>
+                    ))}
+                </div>
 
-                {days.map((day) => (
-                    <DayCard
-                        key={day.toString()}
-                        day={day}
-                        record={getRecordForDay(day)}
-                        onUpdate={handleUpdateRecord}
-                    />
+                {/* Weeks */}
+                {Array.from({ length: Math.ceil(days.length / 7) }, (_, i) => days.slice(i * 7, i * 7 + 7)).map((week, weekIdx) => (
+                    <div key={weekIdx} className="flex gap-4 min-h-[100px]">
+                        {week.map((day) => (
+                            <DayCard
+                                key={day.toString()}
+                                day={day}
+                                record={getRecordForDay(day)}
+                                onUpdate={handleUpdateRecord}
+                            />
+                        ))}
+                        {/* Fill empty slots in the last week if necessary */}
+                        {week.length < 7 && Array.from({ length: 7 - week.length }).map((_, i) => (
+                            <div key={`empty-${i}`} className="flex-1 min-w-[80px]" />
+                        ))}
+                    </div>
                 ))}
             </div>
 
