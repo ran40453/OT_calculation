@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, isSameDay, startOfWeek, endOfWeek } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, isSameDay, startOfWeek, endOfWeek, setMonth, setYear } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { loadData, addOrUpdateRecord, fetchRecordsFromGist } from '../lib/storage'
@@ -38,6 +38,21 @@ function CalendarPage() {
         setRecords(newData)
     }
 
+    // Generate options for selectors
+    const currentYear = today.getFullYear()
+    const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i)
+    const months = Array.from({ length: 12 }, (_, i) => i)
+
+    const handleMonthChange = (e) => {
+        const newMonth = parseInt(e.target.value)
+        setCurrentDate(setMonth(currentDate, newMonth))
+    }
+
+    const handleYearChange = (e) => {
+        const newYear = parseInt(e.target.value)
+        setCurrentDate(setYear(currentDate, newYear))
+    }
+
     return (
         <div className="space-y-6">
             {/* Month Header */}
@@ -48,9 +63,30 @@ function CalendarPage() {
                 >
                     <ChevronLeft size={20} />
                 </button>
-                <h2 className="text-xl font-extrabold uppercase tracking-widest text-[#202731]">
-                    {format(currentDate, 'yyyy / MM')}
-                </h2>
+
+                {/* Selectors */}
+                <div className="flex items-center gap-2">
+                    <div className="relative">
+                        <select
+                            value={currentDate.getFullYear()}
+                            onChange={handleYearChange}
+                            className="appearance-none bg-transparent font-extrabold uppercase tracking-widest text-[#202731] py-1 px-4 neumo-pressed rounded-xl focus:outline-none cursor-pointer text-sm"
+                        >
+                            {years.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+                    <span className="text-gray-300 font-black">/</span>
+                    <div className="relative">
+                        <select
+                            value={currentDate.getMonth()}
+                            onChange={handleMonthChange}
+                            className="appearance-none bg-transparent font-extrabold uppercase tracking-widest text-[#202731] py-1 px-4 neumo-pressed rounded-xl focus:outline-none cursor-pointer text-sm"
+                        >
+                            {months.map(m => <option key={m} value={m}>{format(new Date(2024, m), 'MM')}</option>)}
+                        </select>
+                    </div>
+                </div>
+
                 <button
                     onClick={() => setCurrentDate(addMonths(currentDate, 1))}
                     className="neumo-button p-2"

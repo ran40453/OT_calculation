@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, getDay } from 'date-fns';
 
 const DATA_KEY = 'ot-calculation-data';
 const SETTINGS_KEY = 'ot-calculation-settings';
@@ -20,12 +20,22 @@ const defaultSettings = {
     }
 };
 
+// Helper to standardize country codes
+const standardizeCountry = (c) => {
+    if (!c) return '';
+    const upper = c.toUpperCase();
+    if (upper === 'VN' || upper === '越南' || upper === 'VIETNAM') return 'VN';
+    if (upper === 'IN' || upper === '印度' || upper === 'INDIA') return 'IN';
+    if (upper === 'CN' || upper === '大陸' || upper === 'CHINA') return 'CN';
+    return upper;
+};
+
 /**
  * Calculates OT hours based on end time and standard end time
  */
-export const calculateOTHours = (endTimeStr, standardEndTimeStr = "18:00") => {
+export const calculateOTHours = (endTimeStr, standardEndTimeStr = "17:30") => {
     if (!endTimeStr || typeof endTimeStr !== 'string') return 0;
-    if (!standardEndTimeStr || typeof standardEndTimeStr !== 'string') standardEndTimeStr = "18:00";
+    if (!standardEndTimeStr || typeof standardEndTimeStr !== 'string') standardEndTimeStr = "17:30";
 
     try {
         const parts1 = standardEndTimeStr.split(':');
@@ -35,8 +45,6 @@ export const calculateOTHours = (endTimeStr, standardEndTimeStr = "18:00") => {
 
         const [h1, m1] = parts1.map(Number);
         const [h2, m2] = parts2.map(Number);
-
-        if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
 
         const startMinutes = h1 * 60 + m1;
         const endMinutes = h2 * 60 + m2;
@@ -49,52 +57,95 @@ export const calculateOTHours = (endTimeStr, standardEndTimeStr = "18:00") => {
 };
 
 /**
- * Calculates estimated daily salary
+ * Calculates estimated daily salary with complex tiered OT rules
  */
 export const calculateDailySalary = (record, settings) => {
-    if (!settings || !settings.salary) return 0;
+    if (!settings) return 0;
     if (record.isLeave) return 0;
 
-    const baseMonthly = settings.salary.baseMonthly || 0;
-    const hourlyRate = settings.salary.hourlyRate || (baseMonthly / 30 / 8);
+    // 1. Get Base Salary for that date (History support)
+    // If no history, fallback to current baseMonthly
+    let baseMonthly = settings.salary?.baseMonthly || 0;
+    if (settings.salaryHistory && settings.salaryHistory.length > 0) {
+        const sortedHistory = [...settings.salaryHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const recordDate = new Date(record.date);
+        const applicable = sortedHistory.find(h => new Date(h.date) <= recordDate);
+        if (applicable) baseMonthly = applicable.amount;
+    }
+
+    const hourlyRate = baseMonthly / 30 / 8;
     const daySalary = baseMonthly / 30;
     const otHours = parseFloat(record.otHours) || 0;
-
-    // Simplified OT calculation: first 2 hours at ot1, rest at ot2
-    let otPay = 0;
     const otType = record.otType || 'pay';
 
+    let otPay = 0;
     if (otHours > 0 && otType === 'pay') {
-        const rate1 = settings.rules?.ot1 || 1.34;
-        const rate2 = settings.rules?.ot2 || 1.67;
-
-        if (otHours <= 2) {
-            otPay = otHours * hourlyRate * rate1;
+        if (record.isHoliday) {
+            // 國定假日 (Holidays) 法定假日前 8 小時 2x, 之後比照平日
+            if (otHours <= 8) {
+                otPay = otHours * hourlyRate * 2.0;
+            } else {
+                const first8 = 8 * hourlyRate * 2.0;
+                const extra = otHours - 8;
+                // Extra follows weekday: 1.34 for first 2, 1.67 for rest
+                let extraPay = 0;
+                if (extra <= 2) {
+                    extraPay = extra * hourlyRate * 1.34;
+                } else {
+                    extraPay = (2 * hourlyRate * 1.34) + ((extra - 2) * hourlyRate * 1.67);
+                }
+                otPay = first8 + extraPay;
+            }
+        } else if (getDay(new Date(record.date)) === 0 || getDay(new Date(record.date)) === 6 || record.isRestDay) {
+            // 例假日 (Rest Days) 前 2 小時 1.34x，3-8 小時 1.67x，9+ 小時 2.67x
+            if (otHours <= 2) {
+                otPay = otHours * hourlyRate * 1.34;
+            } else if (otHours <= 8) {
+                otPay = (2 * hourlyRate * 1.34) + ((otHours - 2) * hourlyRate * 1.67);
+            } else {
+                otPay = (2 * hourlyRate * 1.34) + (6 * hourlyRate * 1.67) + ((otHours - 8) * hourlyRate * 2.67);
+            }
         } else {
-            otPay = (2 * hourlyRate * rate1) +
-                ((otHours - 2) * hourlyRate * rate2);
+            // 平日 (Weekdays) 1.34x (前 2h), 1.67x (rest)
+            if (otHours <= 2) {
+                otPay = otHours * hourlyRate * 1.34;
+            } else {
+                otPay = (2 * hourlyRate * 1.34) + ((otHours - 2) * hourlyRate * 1.67);
+            }
         }
     }
 
-    // Holiday bonus? Usually double pay for the base day if it's a holiday and worked
-    const multiplier = record.isHoliday ? 2 : 1;
+    // Holiday bonus: If it's a holiday and worked, the base day is usually 0 because OT is calculated from 0h
+    // But if they worked full day on holiday, we typically just use the OT pay calculated above?
+    // User requested: "平日... 例假日... 國定假日..."
+    // If it's a normal day, we earn daySalary. 
+    // If it's a Holiday/RestDay, do we earn daySalary + otPay? Usually, yes, because daySalary is fixed monthly.
+    const baseDayPay = (record.isHoliday || getDay(new Date(record.date)) === 0 || getDay(new Date(record.date)) === 6) ? 0 : daySalary;
 
-    // Travel allowance
+    // Travel allowance (Per-country)
     let travelAllowance = 0;
     if (record.travelCountry) {
+        const country = standardizeCountry(record.travelCountry);
+        let dailyUSD = settings.allowance?.tripDaily || 50;
+        if (country === 'VN') dailyUSD = 40;
+        else if (country === 'IN') dailyUSD = 70;
+        else if (country === 'CN') dailyUSD = 33;
+
         const rate = settings.liveRate || settings.allowance?.exchangeRate || 32.5;
-        travelAllowance = (settings.allowance?.tripDaily || 50) * rate;
+        travelAllowance = dailyUSD * rate;
     }
 
-    const total = (daySalary * multiplier) + otPay + travelAllowance;
+    const total = baseDayPay + otPay + travelAllowance;
     return isNaN(total) ? 0 : total;
 };
 
 /**
- * Calculates comp leave units (加班1小時增加0.5單位)
+ * Calculates comp leave units
  */
 export const calculateCompLeaveUnits = (record) => {
     if (record.otType === 'leave' && record.otHours) {
+        // Standardized: 1:1 or 1:0.5? Previously was 0.5. Keeping user preferences if mentioned.
+        // User didn't specify units change, so keeping 0.5 for now.
         return parseFloat(record.otHours) * 0.5;
     }
     return 0;

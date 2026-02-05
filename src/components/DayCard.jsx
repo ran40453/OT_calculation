@@ -6,7 +6,7 @@ import { cn } from '../lib/utils'
 import { loadSettings, calculateOTHours, calculateDailySalary, calculateCompLeaveUnits, fetchExchangeRate } from '../lib/storage'
 
 function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFocus }) {
-    const [endTime, setEndTime] = useState(record?.endTime || '18:00')
+    const [endTime, setEndTime] = useState(record?.endTime || '17:30')
     const [travelCountry, setTravelCountry] = useState(record?.travelCountry || '')
     const [isHoliday, setIsHoliday] = useState(record?.isHoliday || false)
     const [isLeave, setIsLeave] = useState(record?.isLeave || false)
@@ -30,10 +30,10 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
 
     useEffect(() => {
         if (record) {
-            let rawTime = record.endTime || '18:00';
+            let rawTime = record.endTime || '17:30';
             if (rawTime.includes('T')) {
                 try { rawTime = format(new Date(rawTime), 'HH:mm'); }
-                catch (e) { rawTime = '18:00'; }
+                catch (e) { rawTime = '17:30'; }
             }
             setEndTime(rawTime)
             // Standardize Vietnam to VN
@@ -219,47 +219,54 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
                         )}
 
                         {/* OT Controls */}
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                                {/* OT Info & Cycle Button */}
-                                <div className="flex-1 neumo-raised p-3 rounded-2xl flex items-center justify-between">
-                                    <div className="space-y-0.5">
-                                        <p className="text-[7px] font-black text-gray-400 uppercase">加班時數</p>
-                                        <p className="text-xl font-black text-neumo-brand leading-none">{otHours.toFixed(1)}h</p>
+                        {otHours >= 0.5 ? (
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    {/* OT Info & Cycle Button */}
+                                    <div className="flex-1 neumo-raised p-3 rounded-2xl flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <p className="text-[7px] font-black text-gray-400 uppercase">加班時數</p>
+                                            <p className="text-xl font-black text-neumo-brand leading-none">{otHours.toFixed(1)}h</p>
+                                        </div>
+                                        <button
+                                            onClick={toggleOtType}
+                                            className={cn(
+                                                "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                                                otType === 'pay' ? "bg-green-500 text-white shadow-lg" : "bg-indigo-500 text-white shadow-lg"
+                                            )}
+                                        >
+                                            {otType === 'pay' ? <DollarSign size={18} /> : <Coffee size={18} />}
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={toggleOtType}
-                                        className={cn(
-                                            "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                                            otType === 'pay' ? "bg-green-500 text-white shadow-lg" : "bg-indigo-500 text-white shadow-lg"
-                                        )}
-                                    >
-                                        {otType === 'pay' ? <DollarSign size={18} /> : <Coffee size={18} />}
-                                    </button>
+
+                                    {/* Comp Leave Units if applicable */}
+                                    {otType === 'leave' && (
+                                        <div className="flex-1 neumo-raised p-3 rounded-2xl text-center">
+                                            <p className="text-[7px] font-black text-indigo-400 uppercase">補休單位</p>
+                                            <p className="text-xl font-black text-indigo-600 leading-none">{compUnits.toFixed(1)}</p>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Comp Leave Units if applicable */}
-                                {otType === 'leave' && (
-                                    <div className="flex-1 neumo-raised p-3 rounded-2xl text-center">
-                                        <p className="text-[7px] font-black text-indigo-400 uppercase">補休單位</p>
-                                        <p className="text-xl font-black text-indigo-600 leading-none">{compUnits.toFixed(1)}</p>
+                                {/* Income Sub-card */}
+                                {otType === 'pay' && !isLeave && (
+                                    <div className="neumo-pressed p-4 rounded-2xl flex justify-between items-center bg-green-50/20">
+                                        <div className="flex items-center gap-2 text-green-600">
+                                            <CreditCard size={14} />
+                                            <span className="text-[9px] font-black uppercase tracking-widest">今日所得</span>
+                                        </div>
+                                        <span className="text-lg font-black text-green-700 tabular-nums">
+                                            ${Math.round(dailySalary).toLocaleString()}
+                                        </span>
                                     </div>
                                 )}
                             </div>
-
-                            {/* Income Sub-card */}
-                            {otType === 'pay' && !isLeave && (
-                                <div className="neumo-pressed p-4 rounded-2xl flex justify-between items-center bg-green-50/20">
-                                    <div className="flex items-center gap-2 text-green-600">
-                                        <CreditCard size={14} />
-                                        <span className="text-[9px] font-black uppercase tracking-widest">今日所得</span>
-                                    </div>
-                                    <span className="text-lg font-black text-green-700 tabular-nums">
-                                        ${Math.round(dailySalary).toLocaleString()}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                        ) : (
+                            <div className="neumo-pressed p-4 rounded-2xl flex justify-center items-center gap-2 opacity-40 grayscale">
+                                <Clock size={14} className="text-gray-400" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">時數不足 0.5H 不計入加班</span>
+                            </div>
+                        )}
 
                         <button
                             onClick={(e) => { e.stopPropagation(); onFocus(); }}

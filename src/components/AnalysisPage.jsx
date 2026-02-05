@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { format, startOfYear, endOfYear, startOfMonth, endOfMonth, eachMonthOfInterval, subYears, isAfter, differenceInCalendarMonths, isSameMonth, subDays, isWithinInterval } from 'date-fns'
-import { TrendingUp, Clock, CreditCard, Calendar, Globe, ArrowUpRight, Coffee, Trophy } from 'lucide-react'
+import { format, startOfYear, endOfYear, eachMonthOfInterval, isSameMonth, subDays, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
+import { TrendingUp, Clock, Calendar, Globe, ArrowUpRight, Coffee, Trophy, BarChart3 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
     Chart as ChartJS,
@@ -72,14 +72,10 @@ function AnalysisPage() {
 
     // Safety parse
     const parse = (d) => new Date(d)
-
-    // Filtering
     const rollingYearRecords = data.filter(r => isWithinInterval(parse(r.date), rollingYearInterval))
     const currentMonthRecords = data.filter(r => isWithinInterval(parse(r.date), currentMonthInterval))
 
     const calcStats = () => {
-        if (!data.length) return null
-
         const getMetrics = (records) => {
             const totalSalary = records.reduce((sum, r) => sum + calculateDailySalary(r, { ...settings, liveRate }), 0)
             const totalOT = records.reduce((sum, r) => sum + (parseFloat(r.otHours) || 0), 0)
@@ -90,9 +86,7 @@ function AnalysisPage() {
         const yearMetrics = getMetrics(rollingYearRecords)
         const monthMetrics = getMetrics(currentMonthRecords)
 
-        // For "Rolling" Annual Salary calculation:
-        // Base Salary * 12 + Daily OT/Travel from the last 365 days
-        const rollingAnnualSalary = (settings.salary.baseMonthly * 12) + yearMetrics.totalSalary
+        const rollingAnnualSalary = (settings.salary?.baseMonthly || 50000) * 12 + yearMetrics.totalSalary
         const rollingMonthlySalary = rollingAnnualSalary / 12
 
         return {
@@ -120,41 +114,79 @@ function AnalysisPage() {
     const otByMonth = chartMonths.map(m => getMonthlyStat(m, r => parseFloat(r.otHours) || 0))
     const compByMonth = chartMonths.map(m => getMonthlyStat(m, r => calculateCompLeaveUnits(r)))
 
-    const barData = {
+    // 1. Merged Chart: OT Hours & Comp Leave
+    const mergedData = {
         labels: chartMonths.map(m => format(m, 'MMM')),
-        datasets: [{
-            label: 'OT Hours',
-            data: otByMonth,
-            backgroundColor: 'rgba(99, 102, 241, 0.4)',
-            borderColor: 'rgb(99, 102, 241)',
-            borderWidth: 1,
-            borderRadius: 4,
-        }]
+        datasets: [
+            {
+                type: 'bar',
+                label: '加班時數 (H)',
+                data: otByMonth,
+                backgroundColor: 'rgba(99, 102, 241, 0.4)',
+                borderColor: 'rgb(99, 102, 241)',
+                borderWidth: 1,
+                borderRadius: 4,
+                yAxisID: 'y',
+            },
+            {
+                type: 'line',
+                label: '補休單位',
+                data: compByMonth,
+                borderColor: 'rgb(79, 70, 229)',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                yAxisID: 'y1',
+            }
+        ]
     }
 
-    const compLineData = {
-        labels: chartMonths.map(m => format(m, 'MMM')),
-        datasets: [{
-            label: 'Comp Leave Units',
-            data: compByMonth,
-            borderColor: 'rgb(79, 70, 229)',
-            backgroundColor: 'rgba(79, 70, 229, 0.1)',
-            fill: true,
-            tension: 0.4,
-            pointRadius: 4,
-            pointBackgroundColor: 'rgb(79, 70, 229)',
-        }]
+    // 2. Attendance & Leave Stacked Bar Chart
+    const currentMonthDays = eachDayOfInterval({ start: startOfMonth(now), end: endOfMonth(now) })
+    const attendanceData = currentMonthDays.map(day => {
+        const record = data.find(r => format(parse(r.date), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'))
+        if (!record) return { attendance: 0, leave: 0 }
+        if (record.isLeave) return { attendance: 0, leave: 1 }
+        return { attendance: 1, leave: 0 }
+    })
+
+    const stackedData = {
+        labels: currentMonthDays.map(d => format(d, 'd')),
+        datasets: [
+            {
+                label: '出勤',
+                data: attendanceData.map(d => d.attendance),
+                backgroundColor: 'rgba(52, 211, 153, 0.6)',
+                borderRadius: 2,
+            },
+            {
+                label: '休假',
+                data: attendanceData.map(d => d.leave),
+                backgroundColor: 'rgba(244, 63, 94, 0.6)',
+                borderRadius: 2,
+            }
+        ]
     }
 
-    const chartOptions = {
+    const mergedOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-        },
+        plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } } } },
         scales: {
-            y: { beginAtZero: true, grid: { display: false }, ticks: { font: { size: 9 } } },
+            y: { position: 'left', grid: { display: false }, ticks: { font: { size: 9 } } },
+            y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 9 } } },
             x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+        },
+    }
+
+    const stackedOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } } } },
+        scales: {
+            y: { stacked: true, beginAtZero: true, max: 1, ticks: { stepSize: 1, font: { size: 9 } }, grid: { display: false } },
+            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 9 } } },
         },
     }
 
@@ -162,7 +194,7 @@ function AnalysisPage() {
         const counts = {}
         data.forEach(r => {
             if (r.travelCountry) {
-                const code = r.travelCountry === '越南' || r.travelCountry === 'VIETNAM' ? 'VN' : r.travelCountry;
+                const code = r.travelCountry.toUpperCase() === '越南' || r.travelCountry.toUpperCase() === 'VIETNAM' ? 'VN' : r.travelCountry.toUpperCase();
                 counts[code] = (counts[code] || 0) + 1
             }
         })
@@ -173,7 +205,7 @@ function AnalysisPage() {
     const totalCompSum = data.reduce((sum, r) => sum + calculateCompLeaveUnits(r), 0)
 
     return (
-        <div className="space-y-8 pb-32 focus-none">
+        <div className="space-y-8 pb-32">
             <header className="flex justify-between items-end">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-black tracking-tight">Analysis</h1>
@@ -195,26 +227,27 @@ function AnalysisPage() {
                     sub={`本月增: ${stats?.totalCompInMonth.toFixed(1)}`}
                     icon={Coffee}
                     color="text-indigo-500"
-                    isDual
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="neumo-card h-[300px] flex flex-col p-6">
+            <div className="space-y-6">
+                {/* Chart 1: Overtime & Comp Leave */}
+                <div className="neumo-card h-[350px] flex flex-col p-6">
                     <h3 className="font-black italic flex items-center gap-2 mb-6 text-sm text-gray-400 uppercase tracking-widest">
-                        加班時數統計 <ArrowUpRight size={14} />
+                        加班與補休趨勢 <ArrowUpRight size={14} />
                     </h3>
                     <div className="flex-1">
-                        <Bar data={barData} options={chartOptions} />
+                        <Bar data={mergedData} options={mergedOptions} />
                     </div>
                 </div>
 
+                {/* Chart 2: Attendance Registry */}
                 <div className="neumo-card h-[300px] flex flex-col p-6">
-                    <h3 className="font-black italic flex items-center gap-2 mb-6 text-sm text-indigo-400 uppercase tracking-widest">
-                        補休累計趨勢 <Coffee size={14} />
+                    <h3 className="font-black italic flex items-center gap-2 mb-6 text-sm text-green-500 uppercase tracking-widest">
+                        本月出勤紀錄 (Stacked) <BarChart3 size={14} />
                     </h3>
                     <div className="flex-1">
-                        <Line data={compLineData} options={chartOptions} />
+                        <Bar data={stackedData} options={stackedOptions} />
                     </div>
                 </div>
             </div>
@@ -225,39 +258,9 @@ function AnalysisPage() {
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* 出差總戰績 */}
-                    <div className="neumo-card p-6">
-                        <h3 className="font-black italic flex items-center gap-2 mb-6 text-sm text-gray-400 uppercase tracking-widest">出差總戰績</h3>
-                        <div className="space-y-4">
-                            {countryStats().slice(0, 3).map(c => (
-                                <div key={c.name} className="space-y-2">
-                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                                        <span className="text-gray-500">{c.name}</span>
-                                        <span className="text-neumo-brand">{c.count} 天</span>
-                                    </div>
-                                    <div className="h-1.5 neumo-pressed rounded-full overflow-hidden">
-                                        <motion.div initial={{ width: 0 }} animate={{ width: `${(c.count / (countryStats()[0]?.count || 1)) * 100}%` }} className="h-full bg-neumo-brand" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* 補休總戰績 */}
-                    <div className="neumo-card p-6 flex flex-col justify-center items-center text-center gap-2">
-                        <Coffee size={32} className="text-indigo-500 opacity-30 mb-2" />
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">補休總戰績</p>
-                        <h4 className="text-4xl font-black text-indigo-600">{totalCompSum.toFixed(1)}</h4>
-                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">累計獲得單位</p>
-                    </div>
-
-                    {/* 加班總戰績 */}
-                    <div className="neumo-card p-6 flex flex-col justify-center items-center text-center gap-2">
-                        <Clock size={32} className="text-blue-500 opacity-30 mb-2" />
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">加班總戰績</p>
-                        <h4 className="text-4xl font-black text-blue-600">{totalOTSum.toFixed(0)}</h4>
-                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">累計總時數 (H)</p>
-                    </div>
+                    <HistoryCard label="出差總戰績" items={countryStats().slice(0, 3)} />
+                    <HistoryCountCard label="補休總戰績" value={totalCompSum.toFixed(1)} sub="累計獲得單位" icon={Coffee} color="text-indigo-600" bgColor="text-indigo-500" />
+                    <HistoryCountCard label="加班總戰績" value={totalOTSum.toFixed(0)} sub="累計總時數 (H)" icon={Clock} color="text-blue-600" bgColor="text-blue-500" />
                 </div>
             </div>
         </div>
@@ -266,20 +269,46 @@ function AnalysisPage() {
 
 function StatCard({ label, value, sub, unit, icon: Icon, color }) {
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="neumo-card p-5 space-y-3"
-        >
-            <div className={cn("p-2 rounded-xl neumo-pressed inline-flex", color)}>
-                <Icon size={18} />
-            </div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="neumo-card p-5 space-y-3">
+            <div className={cn("p-2 rounded-xl neumo-pressed inline-flex", color)}><Icon size={18} /></div>
             <div>
                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{label}</p>
                 <h4 className="text-lg font-black leading-none mb-1">{value}<span className="text-xs ml-0.5">{unit || ''}</span></h4>
                 <p className="text-[10px] font-bold text-gray-500 italic">{sub}</p>
             </div>
         </motion.div>
+    )
+}
+
+function HistoryCard({ label, items }) {
+    return (
+        <div className="neumo-card p-6">
+            <h3 className="font-black italic text-sm text-gray-400 uppercase tracking-widest mb-6">{label}</h3>
+            <div className="space-y-4">
+                {items.map(c => (
+                    <div key={c.name} className="space-y-2">
+                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                            <span className="text-gray-500">{c.name}</span>
+                            <span className="text-neumo-brand">{c.count} 天</span>
+                        </div>
+                        <div className="h-1.5 neumo-pressed rounded-full overflow-hidden">
+                            <motion.div initial={{ width: 0 }} animate={{ width: `${(c.count / (items[0]?.count || 1)) * 100}%` }} className="h-full bg-neumo-brand" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function HistoryCountCard({ label, value, sub, icon: Icon, color, bgColor }) {
+    return (
+        <div className="neumo-card p-6 flex flex-col justify-center items-center text-center gap-2">
+            <Icon size={32} className={cn("opacity-30 mb-2", bgColor)} />
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
+            <h4 className={cn("text-4xl font-black", color)}>{value}</h4>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{sub}</p>
+        </div>
     )
 }
 
