@@ -18,15 +18,15 @@ body {
 
 @layer components {
     .neumo-raised {
-        @apply shadow-[8px_8px_16px_#b8bec7, -8px_-8px_16px_#ffffff];
+        @apply shadow-[8px_8px_16px_#b8bec7,-8px_-8px_16px_#ffffff];
     }
 
     .neumo-pressed {
-        @apply shadow-[inset_2px_2px_5px_#b8bec7, inset_-2px_-2px_5px_#ffffff];
+        @apply shadow-[inset_2px_2px_5px_#b8bec7,inset_-2px_-2px_5px_#ffffff];
     }
 
     .neumo-flat {
-        @apply shadow-[2px_2px_5px_#b8bec7, -2px_-2px_5px_#ffffff];
+        @apply shadow-[2px_2px_5px_#b8bec7,-2px_-2px_5px_#ffffff];
     }
 
     .neumo-card {
