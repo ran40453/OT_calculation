@@ -5,7 +5,7 @@ import { MapPin, Clock, ChevronDown, ChevronUp, Check, Flag, UserX, Palmtree, Mo
 import { cn } from '../lib/utils'
 import { loadSettings, calculateOTHours, calculateDailySalary } from '../lib/storage'
 
-function DayCard({ day, record, onUpdate }) {
+function DayCard({ day, record, onUpdate, isCurrentMonth = true }) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [endTime, setEndTime] = useState(record?.endTime || '18:00')
     const [travelCountry, setTravelCountry] = useState(record?.travelCountry || '')
@@ -133,7 +133,8 @@ function DayCard({ day, record, onUpdate }) {
                 isLeave && "opacity-60",
                 isSunday && "bg-gray-400",
                 "flex-1 min-w-[85px]",
-                isExpanded && "flex-[3] min-w-[180px]"
+                isExpanded && "flex-[3] min-w-[180px]",
+                !isCurrentMonth && "opacity-25 grayscale-[0.5] scale-95 pointer-events-none"
             )}
         >
             <div

@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, isSameDay } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, isSameDay, startOfWeek, endOfWeek } from 'date-fns'
 import { ChevronLeft, ChevronRight, Plus, Palmtree, Moon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
@@ -23,7 +22,9 @@ function CalendarPage() {
 
     const monthStart = startOfMonth(currentDate)
     const monthEnd = endOfMonth(monthStart)
-    const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
+    const calendarStart = startOfWeek(monthStart)
+    const calendarEnd = endOfWeek(monthEnd)
+    const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
 
     const getRecordForDay = (day) => {
         return records.find(r => isSameDay(new Date(r.date), day))
@@ -165,13 +166,10 @@ function CalendarPage() {
                             <DayCard
                                 key={day.toString()}
                                 day={day}
+                                isCurrentMonth={isSameMonth(day, monthStart)}
                                 record={getRecordForDay(day)}
                                 onUpdate={handleUpdateRecord}
                             />
-                        ))}
-                        {/* Fill empty slots in the last week if necessary */}
-                        {week.length < 7 && Array.from({ length: 7 - week.length }).map((_, i) => (
-                            <div key={`empty-${i}`} className="flex-1 min-w-[80px]" />
                         ))}
                     </div>
                 ))}
