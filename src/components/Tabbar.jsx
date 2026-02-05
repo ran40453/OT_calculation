@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '../lib/utils'
+import { Plus } from 'lucide-react'
 
 function Tabbar({ tabs, activeTab, onChange, onAddClick }) {
     const leftTabs = tabs.slice(0, 2)
@@ -58,6 +59,5 @@ function Tabbar({ tabs, activeTab, onChange, onAddClick }) {
     )
 }
 
-import { Plus } from 'lucide-react'
 
 export default Tabbar

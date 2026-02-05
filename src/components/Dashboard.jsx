@@ -1,5 +1,9 @@
+import React, { useState, useEffect } from 'react'
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns'
+import { TrendingUp, Globe, Wallet, Clock, Coffee, Moon } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { loadData, loadSettings, fetchRecordsFromGist, calculateCompLeaveUnits } from '../lib/storage'
-import { startOfYear, endOfYear, isWithinInterval } from 'date-fns'
+import { cn } from '../lib/utils'
 
 function Dashboard() {
     const [data, setData] = useState([])
