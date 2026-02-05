@@ -229,9 +229,12 @@ export const syncSettingsToSheets = syncSettingsToGist;
 /**
  * Test connectivity to Gist
  */
-export const testConnection = async () => {
+export const testConnection = async (token) => {
     try {
-        const response = await fetch(GET_GIST_URL(GIST_ID));
+        const headers = {};
+        if (token) headers['Authorization'] = `token ${token}`;
+
+        const response = await fetch(GET_GIST_URL(GIST_ID), { headers });
         if (response.ok) {
             const gist = await response.json();
             return { ok: true, status: 200, data: gist };

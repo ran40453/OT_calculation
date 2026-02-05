@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { Save, RefreshCw, DollarSign, Calculator, Briefcase, Calendar as CalendarIcon, Activity } from 'lucide-react'
 import { loadSettings, saveSettings, syncSettingsToGist, testConnection } from '../lib/storage'
 import { cn } from '../lib/utils'
@@ -16,8 +17,8 @@ function SettingsPage() {
     const handleTestConnection = async () => {
         setIsTesting(true);
         setTestResult(null);
-        // Ensure current temp token is used for test if not saved yet
-        const result = await testConnection();
+        // Use current temp token if available
+        const result = await testConnection(settings.githubToken);
         setTestResult(result);
         setIsTesting(false);
     };
