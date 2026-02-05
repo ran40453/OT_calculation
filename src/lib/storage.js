@@ -67,6 +67,38 @@ export const calculateDailySalary = (record, settings) => {
     return (daySalary * multiplier) + otPay;
 };
 
+const SHEET_API_URL = '/api';
+
+/**
+ * Maps React record to Google Sheets row format
+ */
+const recordsToSheetFormat = (records) => {
+    const headers = ['日期', '下班時間', '加班時數', '出差國家', '國定假日', '請假'];
+    const rows = records.map(r => [
+        format(new Date(r.date), 'yyyy-MM-dd'),
+        r.endTime || '',
+        r.otHours || 0,
+        r.country || '',
+        r.isHoliday ? 'TRUE' : 'FALSE',
+        r.isLeave ? 'TRUE' : 'FALSE'
+    ]);
+    return { headers, rows };
+};
+
+/**
+ * Maps Google Sheets objects back to React record format
+ */
+const sheetToRecordsFormat = (sheetRows) => {
+    return sheetRows.map(row => ({
+        date: row['日期'] || row['date'],
+        endTime: row['下班時間'] || row['endTime'] || '18:00',
+        otHours: parseFloat(row['加班時數'] || row['otHours'] || 0),
+        country: row['出差國家'] || row['country'] || '',
+        isHoliday: String(row['國定假日'] || row['isHoliday']) === 'TRUE',
+        isLeave: String(row['請假'] || row['isLeave']) === 'TRUE'
+    }));
+};
+
 export const loadData = () => {
     const data = localStorage.getItem(DATA_KEY);
     return data ? JSON.parse(data) : [];
@@ -74,6 +106,76 @@ export const loadData = () => {
 
 export const saveData = (data) => {
     localStorage.setItem(DATA_KEY, JSON.stringify(data));
+};
+
+/**
+ * Fetch data from Google Sheets
+ */
+export const fetchRecordsFromSheets = async () => {
+    try {
+        const response = await fetch(`${SHEET_API_URL}?api=1`);
+        const result = await response.json();
+        if (result && result.data) {
+            const records = sheetToRecordsFormat(result.data);
+            saveData(records);
+            return records;
+        }
+    } catch (error) {
+        console.error('Failed to fetch from sheets:', error);
+    }
+    return loadData();
+};
+
+/**
+ * Save data to Google Sheets
+ */
+export const syncRecordsToSheets = async (records) => {
+    try {
+        const payload = recordsToSheetFormat(records);
+        const response = await fetch(SHEET_API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to sync to sheets:', error);
+        return { ok: false, error: 'Network error' };
+    }
+};
+
+/**
+ * Fetch settings from Google Sheets
+ */
+export const fetchSettingsFromSheets = async () => {
+    try {
+        const response = await fetch(`${SHEET_API_URL}?api=1&mode=settings`);
+        const result = await response.json();
+        // The legacy GAS code might need a mode=settings parameter or separate logic
+        // For now, assume it returns { ok: true, data: { ... } }
+        if (result && result.ok && result.data) {
+            saveSettings(result.data);
+            return result.data;
+        }
+    } catch (error) {
+        console.error('Failed to fetch settings:', error);
+    }
+    return loadSettings();
+};
+
+/**
+ * Save settings to Google Sheets
+ */
+export const syncSettingsToSheets = async (settings) => {
+    try {
+        const response = await fetch(SHEET_API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ type: 'settings', data: settings })
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to sync settings:', error);
+        return { ok: false };
+    }
 };
 
 export const loadSettings = () => {
@@ -90,14 +192,18 @@ export const addOrUpdateRecord = (record) => {
     const dateStr = format(new Date(record.date), 'yyyy-MM-dd');
     const index = data.findIndex(r => format(new Date(r.date), 'yyyy-MM-dd') === dateStr);
 
+    let newData;
     if (index >= 0) {
-        data[index] = { ...data[index], ...record };
+        newData = [...data];
+        newData[index] = { ...newData[index], ...record };
     } else {
-        data.push(record);
+        newData = [...data, record];
     }
 
-    saveData(data);
-    return data;
+    saveData(newData);
+    // Background sync
+    syncRecordsToSheets(newData);
+    return newData;
 };
 
 export const deleteRecord = (date) => {
@@ -105,5 +211,6 @@ export const deleteRecord = (date) => {
     const dateStr = format(new Date(date), 'yyyy-MM-dd');
     const filtered = data.filter(r => format(new Date(r.date), 'yyyy-MM-dd') !== dateStr);
     saveData(filtered);
+    syncRecordsToSheets(filtered);
     return filtered;
 };

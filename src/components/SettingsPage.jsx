@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Save, RefreshCw, DollarSign, Calculator, Briefcase, Calendar as CalendarIcon } from 'lucide-react'
-import { loadSettings, saveSettings } from '../lib/storage'
+import { loadSettings, saveSettings, syncSettingsToSheets } from '../lib/storage'
 import { cn } from '../lib/utils'
 
 function SettingsPage() {
@@ -13,9 +13,10 @@ function SettingsPage() {
 
     if (!settings) return null
 
-    const handleSave = () => {
+    const handleSave = async () => {
         setIsSaving(true)
         saveSettings(settings)
+        await syncSettingsToSheets(settings) // Sync to cloud
         setTimeout(() => setIsSaving(false), 1000)
     }
 

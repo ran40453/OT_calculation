@@ -6,8 +6,16 @@ import AnalysisPage from './components/AnalysisPage'
 import SettingsPage from './components/SettingsPage'
 import Tabbar from './components/Tabbar'
 
+import { fetchRecordsFromSheets, fetchSettingsFromSheets } from './lib/storage'
+
 function App() {
     const [activeTab, setActiveTab] = useState('home')
+
+    React.useEffect(() => {
+        // Initial sync from Google Sheets
+        fetchRecordsFromSheets();
+        fetchSettingsFromSheets();
+    }, []);
 
     const renderPage = () => {
         switch (activeTab) {
