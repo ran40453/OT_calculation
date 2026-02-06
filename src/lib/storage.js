@@ -20,6 +20,48 @@ const defaultSettings = {
     }
 };
 
+/**
+ * Standardizes record format from historical or different schemas
+ */
+export const standardizeRecords = (records) => {
+    if (!Array.isArray(records)) return [];
+    return records.map(r => {
+        const nr = { ...r };
+
+        // 1. Handle tiered OT hours (Historical format: { "1.34": 2, "1.67": 2 })
+        const h134 = parseFloat(nr['1.34']) || 0;
+        const h167 = parseFloat(nr['1.67']) || 0;
+        const h267 = parseFloat(nr['2.67']) || 0;
+        const h2 = parseFloat(nr['2']) || 0;
+        const tieredSum = h134 + h167 + h267 + h2;
+
+        // Use either existing otHours or calculate from tiers
+        let otHours = parseFloat(nr.otHours);
+        if (isNaN(otHours) || otHours === 0) {
+            otHours = tieredSum;
+        }
+
+        // 2. Map property names (Historical or snake_case variants)
+        const travelCountry = nr.travelCountry || nr.travel_country || '';
+        const isHoliday = !!(nr.isHoliday || nr.is_holiday);
+        const isLeave = !!(nr.isLeave || nr.is_leave);
+        const isRestDay = !!(nr.isRestDay || nr.is_rest_day);
+        const endTime = nr.endTime || nr.end_time || '';
+        const otType = nr.otType || nr.ot_type || 'pay';
+
+        return {
+            ...nr,
+            otHours,
+            travelCountry,
+            isHoliday,
+            isLeave,
+            isRestDay,
+            endTime,
+            otType
+        };
+    });
+};
+
 // Helper to standardize country codes (exported for component use)
 export const standardizeCountry = (c) => {
     if (!c || typeof c !== 'string') return '';
@@ -82,9 +124,9 @@ export const calculateOTHours = (endTimeStr, standardEndTimeStr = "17:30") => {
  * Calculates estimated daily salary with complex tiered OT rules
  */
 export const calculateDailySalary = (record, settings) => {
-    const emptyMetrics = { total: 0, extra: 0, otPay: 0, travelAllowance: 0, baseDayPay: 0 };
+    const emptyMetrics = { total: 0, extra: 0, otPay: 0, travelAllowance: 0, baseDayPay: 0, bonus: 0 };
     if (!settings || !record) return emptyMetrics;
-    if (record.isLeave) return emptyMetrics;
+    if (record.isLeave && record.recordType !== 'bonus') return emptyMetrics; // Allow bonus on leave days if it was manually entered
 
     // 1. Get Base Salary for that date (History support)
     let baseMonthly = parseFloat(settings.salary?.baseMonthly) || 0;
@@ -167,7 +209,8 @@ export const calculateDailySalary = (record, settings) => {
         travelAllowance = dailyUSD * rate;
     }
 
-    const extra = (isNaN(otPay) ? 0 : otPay) + (isNaN(travelAllowance) ? 0 : travelAllowance);
+    const bonus = parseFloat(record.bonus) || 0;
+    const extra = (isNaN(otPay) ? 0 : otPay) + (isNaN(travelAllowance) ? 0 : travelAllowance) + bonus;
     const total = (isNaN(baseDayPay) ? 0 : baseDayPay) + extra;
 
     return {
@@ -175,7 +218,8 @@ export const calculateDailySalary = (record, settings) => {
         extra: isNaN(extra) ? 0 : extra,
         otPay: isNaN(otPay) ? 0 : otPay,
         travelAllowance: isNaN(travelAllowance) ? 0 : travelAllowance,
-        baseDayPay: isNaN(baseDayPay) ? 0 : baseDayPay
+        baseDayPay: isNaN(baseDayPay) ? 0 : baseDayPay,
+        bonus: isNaN(bonus) ? 0 : bonus
     };
 };
 
@@ -220,9 +264,10 @@ export const fetchRecordsFromGist = async () => {
             const records = JSON.parse(recordsContent);
             if (!Array.isArray(records)) throw new Error('Gist data is not an array');
 
-            console.log(`Gist Sync: Successfully fetched ${records.length} records.`);
-            saveData(records);
-            return records;
+            const standardized = standardizeRecords(records);
+            console.log(`Gist Sync: Successfully fetched and standardized ${standardized.length} records.`);
+            saveData(standardized);
+            return standardized;
         }
     } catch (error) {
         console.error('Failed to fetch from Gist:', error);
@@ -347,7 +392,8 @@ export const loadData = () => {
         const data = localStorage.getItem(DATA_KEY);
         if (!data) return [];
         const parsed = JSON.parse(data);
-        return Array.isArray(parsed) ? parsed : [];
+        if (!Array.isArray(parsed)) return [];
+        return standardizeRecords(parsed);
     } catch (e) {
         console.error('Storage: Failed to load records', e);
         return [];

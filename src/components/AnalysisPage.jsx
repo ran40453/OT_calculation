@@ -170,38 +170,89 @@ function AnalysisPage() {
         return result;
     }
 
-    const otByMonth = chartMonths.map(m => {
-        const val = getMonthlyStat(m, r => {
-            let hours = parseFloat(r.otHours) || 0;
-            if (hours === 0 && r.endTime && settings?.rules?.standardEndTime) {
-                hours = calculateOTHours(r.endTime, settings.rules.standardEndTime);
-            }
-            return hours;
-        });
-        return val;
+    const bonusByMonth = chartMonths.map(m => getMonthlyStat(m, r => parseFloat(r.bonus) || 0))
+    const otPayByMonth = chartMonths.map(m => getMonthlyStat(m, r => calculateDailySalary(r, { ...settings, liveRate }).otPay))
+    const travelByMonth = chartMonths.map(m => getMonthlyStat(m, r => calculateDailySalary(r, { ...settings, liveRate }).travelAllowance))
+    const baseByMonth = chartMonths.map(m => {
+        // Find applicable base salary for this month
+        let base = settings.salary?.baseMonthly || 50000;
+        if (settings.salaryHistory && Array.isArray(settings.salaryHistory)) {
+            const sortedHistory = [...settings.salaryHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const monthEnd = endOfMonth(m);
+            const applicable = sortedHistory.find(h => new Date(h.date) <= monthEnd);
+            if (applicable) base = parseFloat(applicable.amount) || base;
+        }
+        return base;
     })
-
-    console.log('Analysis: Calculating Comp Leave units by month...');
-    const compByMonth = chartMonths.map(m => {
-        const val = getMonthlyStat(m, r => {
-            if (r.otType === 'leave') {
-                let h = parseFloat(r.otHours) || 0;
-                if (h === 0 && r.endTime && settings?.rules?.standardEndTime) {
-                    h = calculateOTHours(r.endTime, settings.rules.standardEndTime);
-                }
-                return Math.floor(h);
-            }
-            return 0;
-        });
-        return val;
+    const totalIncomeByMonth = chartMonths.map((m, idx) => {
+        return (bonusByMonth[idx] || 0) + (otPayByMonth[idx] || 0) + (travelByMonth[idx] || 0) + (baseByMonth[idx] || 0);
     })
 
     console.log('Analysis Chart Summary:', {
         months: chartMonths.map(m => format(m, 'MMM-yyyy')),
         otValues: otByMonth,
         compValues: compByMonth,
+        bonusValues: bonusByMonth,
         totalDataRecords: data.length
     });
+
+    // Income Structure Chart Data
+    const incomeData = {
+        labels: chartMonths.map(m => format(m, 'MMM')),
+        datasets: [
+            {
+                label: '獎金',
+                data: bonusByMonth,
+                borderColor: 'rgb(245, 158, 11)', // Amber 500
+                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: 'rgb(245, 158, 11)',
+            },
+            {
+                label: '加班費',
+                data: otPayByMonth,
+                borderColor: 'rgb(99, 102, 241)', // Indigo 500
+                backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: 'rgb(99, 102, 241)',
+            },
+            {
+                label: '出差費',
+                data: travelByMonth,
+                borderColor: 'rgb(16, 185, 129)', // Emerald 500
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: 'rgb(16, 185, 129)',
+            },
+            {
+                label: '底薪',
+                data: baseByMonth,
+                borderColor: 'rgb(107, 114, 128)', // Gray 500
+                backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: 'rgb(107, 114, 128)',
+            },
+            {
+                label: '當月總收入',
+                data: totalIncomeByMonth,
+                borderColor: 'rgb(253, 224, 71)', // Yellow 300 (鵝黃色)
+                backgroundColor: 'transparent',
+                fill: false,
+                tension: 0.4,
+                pointRadius: 5,
+                pointBackgroundColor: 'rgb(253, 224, 71)',
+                borderWidth: 3,
+            }
+        ]
+    }
 
     // 1. Merged Chart: OT Hours & Comp Leave
     const mergedData = {
@@ -251,8 +302,7 @@ function AnalysisPage() {
     const attendanceCount = attendanceBoxes.filter(b => b.type === 'attendance').length;
     const attendancePercent = Math.round((attendanceCount / attendanceBoxesLength) * 100) || 0;
 
-    // Options for OT/Comp Chart
-    const mergedOptions = {
+    const incomeOptions = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
@@ -260,11 +310,17 @@ function AnalysisPage() {
                 display: true,
                 position: 'top',
                 labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } }
+            },
+            tooltip: {
+                callbacks: {
+                    label: (context) => {
+                        return `${context.dataset.label}: $${Math.round(context.raw).toLocaleString()}`;
+                    }
+                }
             }
         },
         scales: {
-            y: { position: 'left', grid: { display: false }, ticks: { font: { size: 9 } }, title: { display: true, text: '加班時數', font: { size: 8, weight: 'bold' } } },
-            y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 9 } }, title: { display: true, text: '補休單位', font: { size: 8, weight: 'bold' } } },
+            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 9 } } },
             x: { grid: { display: false }, ticks: { font: { size: 9 } } },
         },
     }
@@ -331,7 +387,17 @@ function AnalysisPage() {
             </div>
 
             <div className="space-y-6">
-                {/* Chart 1: Overtime & Comp Leave */}
+                {/* Chart 1: Monthly Income Structure */}
+                <div className="neumo-card h-[400px] flex flex-col p-6">
+                    <h3 className="font-black italic flex items-center gap-2 mb-6 text-sm text-[#202731] uppercase tracking-widest">
+                        每月收入結構 (Monthly Income) <TrendingUp size={14} className="text-amber-500" />
+                    </h3>
+                    <div className="flex-1">
+                        <Line data={incomeData} options={incomeOptions} />
+                    </div>
+                </div>
+
+                {/* Chart 2: Overtime & Comp Leave */}
                 <div className="neumo-card h-[350px] flex flex-col p-6">
                     <h3 className="font-black italic flex items-center gap-2 mb-6 text-sm text-gray-400 uppercase tracking-widest">
                         加班與補休趨勢 <ArrowUpRight size={14} />

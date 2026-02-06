@@ -105,7 +105,9 @@ function Dashboard() {
             return total + (isNaN(lineVal) ? 0 : lineVal);
         }, 0);
 
-        return { tripCount, totalOT, totalComp, totalLeave, totalSalary, allowance }
+        const bonus = records.reduce((sum, r) => sum + (parseFloat(r.bonus) || 0), 0)
+
+        return { tripCount, totalOT, totalComp, totalLeave, totalSalary, allowance, bonus }
     }
 
     const monthStats = calcMetrics(currentMonthRecords, true)
@@ -134,7 +136,7 @@ function Dashboard() {
     )
 
     const widgets = [
-        { label: '獎金計算', main: mask(0), sub: 'Bonus Calculation', icon: Gift, color: 'text-amber-500', single: true },
+        { label: '獎金計算', year: `$${Math.round(yearStats.bonus).toLocaleString()}`, month: `$${Math.round(monthStats.bonus).toLocaleString()}`, icon: Gift, color: 'text-amber-500' },
         { label: '出差天數', year: yearStats.tripCount, month: monthStats.tripCount, unit: 'd', icon: Globe, color: 'text-green-500' },
         { label: '津貼估計', year: `$${Math.round(yearStats.allowance).toLocaleString()}`, month: `$${Math.round(monthStats.allowance).toLocaleString()}`, icon: Wallet, color: 'text-orange-500' },
         { label: '薪資估計', year: `$${Math.round(yearStats.totalSalary).toLocaleString()}`, month: `$${Math.round(monthStats.totalSalary).toLocaleString()}`, icon: TrendingUp, color: 'text-purple-500' },
