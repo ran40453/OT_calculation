@@ -55,29 +55,31 @@ function CalendarPage({ data, onUpdate, isPrivacy }) {
         const row = Math.floor(dayIndex / 7);
         const col = dayIndex % 7;
 
-        // Vertical Logic (Top Half -> Down, Bottom Half -> Up)
-        // Group 1 (Rows 0, 1) -> Target Start 1 (Ends 3) i.e. Block is Rows 1,2,3
-        // Group 2 (Rows 2+) -> Target Start 0 (Ends 2) i.e. Block is Rows 0,1,2
-        // Note: Using 1-based indexing for Grid Lines or 0-based for Calculation? 
-        // CSS Grid lines are 1-based.
+        // Vertical Logic:
+        // Rows 0, 1 (Top Half) -> Body occupies relative rows 1, 2, 3 (Indices 1-3).
+        // Rows 2, 3+ (Bottom Half) -> Body occupies relative rows 0, 1, 2 (Indices 0-2).
+        // Generalizing for any 4-row block:
+        const patternOffset = Math.floor(row / 4) * 4;
+        const relativeRow = row % 4;
 
-        // Let's determine logical row index first (0-based)
-        let targetStartRow = 0;
-        if (row <= 1) {
-            targetStartRow = 1; // Block starts at Row Index 1 (2nd Row)
+        let bodyStartRowRelative = 0;
+        if (relativeRow < 2) {
+            bodyStartRowRelative = 1; // Expands Down
         } else {
-            targetStartRow = 0; // Block starts at Row Index 0 (1st Row)
+            bodyStartRowRelative = 0; // Expands Up
         }
 
-        // Horizontal Logic
+        const targetStartRow = patternOffset + bodyStartRowRelative;
+
+        // Horizontal Logic: Expands Right [Col, Col+1] unless last column
         let targetStartCol = col;
-        if (col === 6) { // Last column
+        if (col === 6) { // Last column (G)
             targetStartCol = 5; // Use 5,6 instead of 6,7
         }
 
         // Is clicked cell inside the block?
-        // Block Rows: [targetStartRow, targetStartRow + 2]
-        // Block Cols: [targetStartCol, targetStartCol + 1]
+        // Body Block covers 3 rows: [targetStartRow, targetStartRow + 2]
+        // Body Block covers 2 cols: [targetStartCol, targetStartCol + 1]
         const isRowInside = row >= targetStartRow && row <= targetStartRow + 2;
         const isColInside = col >= targetStartCol && col <= targetStartCol + 1;
         const isInside = isRowInside && isColInside;
@@ -195,15 +197,19 @@ function CalendarOverlay({ day, record, geometry, onUpdate, onClose, isPrivacy, 
         position: 'absolute',
         width: '100%',
         height: '100%',
-        zIndex: 51
+        zIndex: 51 // Tab is higher than Body
     };
 
-    // Corner Logic: Where is the junction?
-    // If not inside, we are "sticking out".
-    // Vertical Stick Check
-    const stickDir = row < targetStartRow ? 'top' : (row >= targetStartRow + 3 ? 'bottom' : null);
+    // Stick Direction relative to Body
+    let stickDir = null;
+    if (row < targetStartRow) stickDir = 'top';
+    else if (row >= targetStartRow + 3) stickDir = 'bottom';
 
-    // Render
+    // Which column of the Body does the Tab attach to?
+    // If col == targetStartCol -> Left Col
+    // If col == targetStartCol + 1 -> Right Col
+    const attachCol = (col === targetStartCol) ? 'left' : 'right';
+
     return (
         <>
             {/* Backdrop to close */}
@@ -222,16 +228,27 @@ function CalendarOverlay({ day, record, geometry, onUpdate, onClose, isPrivacy, 
                 style={blockStyle}
                 className="relative pointer-events-auto"
             >
-                <DayCardExpanded
-                    day={day}
-                    record={record}
-                    onUpdate={onUpdate}
-                    onClose={onClose}
-                    className="h-full w-full shadow-2xl ring-4 ring-white/50" // Enhanced shadow/ring
-                />
+                <div className="h-full w-full bg-[#E0E5EC] neumo-raised rounded-2xl md:rounded-3xl shadow-2xl relative overflow-visible">
+                    {/* If sticking out, we need to hide the border radius at the connection point */}
+                    {/* The Body Itself */}
+                    <DayCardExpanded
+                        day={day}
+                        record={record}
+                        onUpdate={onUpdate}
+                        onClose={onClose}
+                        hideHeader={!isInside}
+                        className="h-full w-full shadow-none bg-transparent" // Remove default card styles to merge
+                        style={{
+                            borderTopLeftRadius: stickDir === 'top' && attachCol === 'left' ? 0 : undefined,
+                            borderTopRightRadius: stickDir === 'top' && attachCol === 'right' ? 0 : undefined,
+                            borderBottomLeftRadius: stickDir === 'bottom' && attachCol === 'left' ? 0 : undefined,
+                            borderBottomRightRadius: stickDir === 'bottom' && attachCol === 'right' ? 0 : undefined,
+                        }}
+                    />
+                </div>
             </motion.div>
 
-            {/* If sticking out, render the 'Connector' Cell */}
+            {/* The "Tab" / Connector Cell */}
             {!isInside && (
                 <motion.div
                     initial={{ opacity: 0 }}
@@ -240,37 +257,34 @@ function CalendarOverlay({ day, record, geometry, onUpdate, onClose, isPrivacy, 
                     style={cellStyle}
                     className="relative pointer-events-none"
                 >
-                    {/* We render a "Fake" DayCard that looks selected/merging */}
                     <div
-                        className="h-full w-full bg-[#E0E5EC] neumo-raised p-2 flex flex-col items-center justify-center relative shadow-none"
+                        className="h-full w-full bg-[#E0E5EC] neumo-raised p-2 flex flex-col items-center justify-start relative shadow-none"
                         style={{
-                            // Magic Border Radius to Meld
-                            borderBottomLeftRadius: stickDir === 'top' && col === targetStartCol + 1 ? '0' : undefined,
-                            borderBottomRightRadius: stickDir === 'top' && col === targetStartCol ? '0' : undefined,
-                            borderTopLeftRadius: stickDir === 'bottom' && col === targetStartCol + 1 ? '0' : undefined,
-                            borderTopRightRadius: stickDir === 'bottom' && col === targetStartCol ? '0' : undefined,
-                            // Mask the border where it meets the block
-                            boxShadow: 'none', // Remove shadow to blend
+                            // Border Radius Masking for Tab
+                            borderBottomLeftRadius: stickDir === 'top' ? 0 : undefined,
+                            borderBottomRightRadius: stickDir === 'top' ? 0 : undefined,
+                            borderTopLeftRadius: stickDir === 'bottom' ? 0 : undefined,
+                            borderTopRightRadius: stickDir === 'bottom' ? 0 : undefined,
+                            zIndex: 52
                         }}
                     >
-                        {/* Just minimal content to show 'It's this day' */}
-                        <span className="text-2xl font-black text-neumo-brand">{format(day, 'dd')}</span>
-                        {/* Optional connector patch to hide the seam perfectly */}
+                        {/* Tab Content: Date Header */}
+                        <span className="text-xl md:text-2xl font-black text-neumo-brand">{format(day, 'dd')}</span>
+
+                        {/* Seamless Patch to cover the gap/shadow between Tab and Body */}
                         <div
                             className="absolute bg-[#E0E5EC] z-50"
                             style={{
-                                width: '102%', height: '10px',
-                                bottom: stickDir === 'top' ? '-5px' : undefined,
-                                top: stickDir === 'bottom' ? '-5px' : undefined,
-                                left: '-1%',
+                                width: '100%',
+                                height: '20px',
+                                left: 0,
+                                bottom: stickDir === 'top' ? '-10px' : undefined,
+                                top: stickDir === 'bottom' ? '-10px' : undefined,
                             }}
                         />
                     </div>
                 </motion.div>
             )}
-
-            {/* Design Flourish: Smooth Corner if needed (Advanced) */}
-            {/* For now, just the block + connector is a huge improvement */}
         </>
     )
 }

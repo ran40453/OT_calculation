@@ -5,7 +5,7 @@ import { MapPin, Clock, Check, Palmtree, Moon, DollarSign, Coffee, X } from 'luc
 import { cn } from '../lib/utils'
 import { loadSettings, calculateOTHours, calculateDailySalary, calculateCompLeaveUnits, fetchExchangeRate, standardizeCountry } from '../lib/storage'
 
-function DayCardExpanded({ day, record, onUpdate, onClose, style, className }) {
+function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hideHeader = false }) {
     const [endTime, setEndTime] = useState(record?.endTime || '17:30')
     const [travelCountry, setTravelCountry] = useState(record?.travelCountry || '')
     const [isHoliday, setIsHoliday] = useState(record?.isHoliday || false)
@@ -128,13 +128,17 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className }) {
         <div style={style} className={cn("neumo-card p-4 flex flex-col gap-4 overflow-hidden relative z-50 bg-[#E0E5EC] shadow-2xl", className)} onClick={e => e.stopPropagation()}>
             {/* Header Section with Date (if needed) or just Close button */}
             {/* The design implies this card merges with the cell. We might render the content directly. */}
+            {!hideHeader && (
+                <div className="flex justify-between items-start">
+                    <h3 className="text-xl font-black text-neumo-brand">{format(day, 'MMM dd')}</h3>
+                    <button onClick={onClose} className="neumo-button p-2 text-gray-400 hover:text-red-400">
+                        <X size={18} />
+                    </button>
+                </div>
+            )}
 
-            <div className="flex justify-between items-start">
-                <h3 className="text-xl font-black text-neumo-brand">{format(day, 'MMM dd')}</h3>
-                <button onClick={onClose} className="neumo-button p-2 text-gray-400 hover:text-red-400">
-                    <X size={18} />
-                </button>
-            </div>
+            {/* If header is hidden, we might still want a close action or just rely on backdrop click? */}
+            {/* The CalendarOverlay handles closing via backdrop. */}
 
             {/* Status Grid */}
             <div className="flex gap-2">
