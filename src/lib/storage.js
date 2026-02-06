@@ -34,12 +34,28 @@ export const standardizeCountry = (c) => {
  * Calculates OT hours based on end time and standard end time
  */
 export const calculateOTHours = (endTimeStr, standardEndTimeStr = "17:30") => {
-    if (!endTimeStr || typeof endTimeStr !== 'string') return 0;
-    if (!standardEndTimeStr || typeof standardEndTimeStr !== 'string') standardEndTimeStr = "17:30";
+    if (!endTimeStr) return 0;
+    if (!standardEndTimeStr) standardEndTimeStr = "17:30";
+
+    const extractTime = (str) => {
+        if (typeof str !== 'string') return null;
+        // If it's a full ISO string (contains 'T'), extract the HH:mm from the middle
+        if (str.includes('T')) {
+            const timePart = str.split('T')[1];
+            if (timePart) return timePart.substring(0, 5); // Take HH:mm
+        }
+        // If it's already HH:mm:ss or similar, take the first 5 chars
+        return str.substring(0, 5);
+    };
+
+    const t1 = extractTime(standardEndTimeStr);
+    const t2 = extractTime(endTimeStr);
+
+    if (!t1 || !t2) return 0;
 
     try {
-        const parts1 = standardEndTimeStr.split(':');
-        const parts2 = endTimeStr.split(':');
+        const parts1 = t1.split(':');
+        const parts2 = t2.split(':');
 
         if (parts1.length < 2 || parts2.length < 2) return 0;
 
