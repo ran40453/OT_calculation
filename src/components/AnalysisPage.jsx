@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { format, startOfYear, endOfYear, eachMonthOfInterval, isSameMonth, subDays, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from 'date-fns'
+import { format, startOfYear, endOfYear, eachMonthOfInterval, isSameMonth, subDays, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, subMonths } from 'date-fns'
 import { TrendingUp, Clock, Calendar, Globe, ArrowUpRight, Coffee, Trophy, BarChart3 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
@@ -119,8 +119,8 @@ function AnalysisPage() {
 
     const stats = calcStats()
     const chartMonths = eachMonthOfInterval({
-        start: startOfYear(now),
-        end: endOfYear(now)
+        start: startOfMonth(subMonths(now, 11)),
+        end: endOfMonth(now)
     })
 
     const getMonthlyStat = (month, fn) => {
