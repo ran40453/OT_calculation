@@ -148,9 +148,10 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
     return (
         <motion.div
             layout
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             onClick={onFocus}
             className={cn(
-                "neumo-card transition-all duration-300 flex flex-col p-4",
+                "neumo-card transition-all flex flex-col p-3 md:p-4", // Slightly smaller padding on mobile
                 isToday(day) && "ring-2 ring-neumo-brand/40",
                 isHoliday && "bg-orange-50/30",
                 isLeave && "opacity-50",
@@ -162,41 +163,48 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
         >
             {/* Header / Compact Layout */}
             <div className="flex justify-between items-start w-full">
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-0.5 md:gap-1">
                     <span className={cn(
-                        "text-xl font-black leading-none",
+                        "text-lg md:text-xl font-black leading-none",
                         isToday(day) ? "text-neumo-brand" : "text-[#202731]",
                         isSunday && "opacity-60"
                     )}>
                         {format(day, 'dd')}
                     </span>
 
+                    {/* Salary under date on mobile/compact */}
+                    {dailySalary > 0 && !isLeave && (
+                        <span className={cn("text-[7px] md:hidden font-bold text-gray-400 tabular-nums")}>
+                            ${Math.round(dailySalary).toLocaleString()}
+                        </span>
+                    )}
+
                     {/* Icons below date - Hidden on mobile compact unless focused */}
-                    <div className={cn("items-center gap-1.5 h-4", isFocused ? "flex" : "hidden md:flex")}>
-                        {isHoliday && <Palmtree size={12} className="text-orange-500" strokeWidth={3} />}
-                        {isLeave && <Moon size={12} className="text-indigo-400" strokeWidth={3} />}
+                    <div className={cn("items-center gap-1.2 md:gap-1.5 h-3 md:h-4", isFocused ? "flex" : "hidden md:flex")}>
+                        {isHoliday && <Palmtree size={10} className="text-orange-500 md:w-3" strokeWidth={3} />}
+                        {isLeave && <Moon size={10} className="text-indigo-400 md:w-3" strokeWidth={3} />}
                         {travelCountry && (
-                            <span className="text-[7px] font-black text-green-600 uppercase border border-green-200 px-1 rounded">
+                            <span className="text-[6px] md:text-[7px] font-black text-green-600 uppercase border border-green-200 px-0.5 rounded">
                                 {getCountryCode(travelCountry)}
                             </span>
                         )}
                     </div>
                 </div>
 
-                {/* Right of date: OT & Money - Money hidden on mobile compact */}
+                {/* Right of date: OT & Money - Money shown on right ONLY for Desktop */}
                 <div className="flex flex-col items-end">
                     {otHours > 0 && (
-                        <div className="flex items-center gap-1">
-                            <span className="text-sm font-black text-neumo-brand">{otHours.toFixed(1)}h</span>
+                        <div className="flex items-center gap-0.5 md:gap-1">
+                            <span className="text-xs md:text-sm font-black text-neumo-brand">{otHours.toFixed(1)}h</span>
                             {otType === 'leave' ? (
-                                <Coffee size={10} className="text-indigo-500" />
+                                <Coffee size={8} className="text-indigo-500 md:w-2.5" />
                             ) : (
-                                <DollarSign size={10} className="text-green-500" />
+                                <DollarSign size={8} className="text-green-500 md:w-2.5" />
                             )}
                         </div>
                     )}
                     {dailySalary > 0 && !isLeave && (
-                        <span className={cn("text-[9px] font-bold text-gray-400 tabular-nums", isFocused ? "block" : "hidden md:block")}>
+                        <span className="hidden md:block text-[9px] font-bold text-gray-400 tabular-nums">
                             ${Math.round(dailySalary).toLocaleString()}
                         </span>
                     )}

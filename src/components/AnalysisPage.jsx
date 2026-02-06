@@ -18,7 +18,7 @@ import {
 } from 'chart.js'
 import { Bar, Line, Chart } from 'react-chartjs-2'
 import { cn } from '../lib/utils'
-import { loadData, fetchRecordsFromGist, loadSettings, calculateDailySalary, fetchExchangeRate, calculateCompLeaveUnits } from '../lib/storage'
+import { loadData, fetchRecordsFromGist, loadSettings, calculateDailySalary, fetchExchangeRate, calculateCompLeaveUnits, calculateOTHours } from '../lib/storage'
 
 ChartJS.register(
     CategoryScale,
