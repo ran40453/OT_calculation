@@ -42,26 +42,31 @@ function AnalysisPage() {
 
     useEffect(() => {
         const init = async () => {
-            try {
-                const s = loadSettings()
-                setSettings(s)
-                setData(loadData())
+            console.log('Analysis: Initializing...');
+            const localData = loadData();
+            console.log('Analysis: Local records found:', localData.length);
+            setData(localData);
+            const s = loadSettings();
+            setSettings(s);
 
+            try {
                 const [rate, remote] = await Promise.all([
                     fetchExchangeRate().catch(() => 32.5),
                     fetchRecordsFromGist().catch(() => null)
                 ]);
 
-                if (rate) setLiveRate(rate)
-                if (remote) setData(remote)
+                if (rate) setLiveRate(rate);
+                if (remote) {
+                    console.log('Analysis: Remote records found:', remote.length);
+                    setData(remote);
+                }
             } catch (err) {
-                console.error("Analysis init error:", err)
-            } finally {
-                setIsLoading(false)
+                console.error('Analysis: Fetch error:', err);
             }
-        }
-        init()
-    }, [])
+            setIsLoading(false);
+        };
+        init();
+    }, []);
 
     if (!settings || isLoading) return (
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -75,12 +80,19 @@ function AnalysisPage() {
     const currentMonthInterval = { start: startOfMonth(now), end: endOfMonth(now) }
 
     // Safety parse
+    // Safety parse - handling both Date objects and various string formats
     const parse = (d) => {
         if (!d) return new Date(0);
         if (d instanceof Date) return d;
-        const parsed = parseISO(d);
-        if (!isNaN(parsed.getTime())) return parsed;
-        return new Date(d);
+        // If it's an ISO string with T, parse it
+        if (typeof d === 'string' && d.includes('T')) {
+            const p = parseISO(d);
+            if (!isNaN(p.getTime())) return p;
+        }
+        // Fallback or simple yyyy-MM-dd
+        const p = new Date(d);
+        if (!isNaN(p.getTime())) return p;
+        return new Date(0);
     }
     const rollingYearRecords = data.filter(r => {
         const d = parse(r.date);
@@ -124,9 +136,13 @@ function AnalysisPage() {
     const getMonthlyStat = (month, fn) => {
         const filtered = data.filter(r => {
             const d = parse(r.date);
-            return d instanceof Date && !isNaN(d) && isSameMonth(d, month);
+            const match = d instanceof Date && !isNaN(d) && isSameMonth(d, month);
+            return match;
         })
-        return filtered.reduce((sum, r) => sum + fn(r), 0)
+        return filtered.reduce((sum, r) => {
+            const val = fn(r);
+            return sum + (isNaN(val) ? 0 : val);
+        }, 0)
     }
 
     const otByMonth = chartMonths.map(m => getMonthlyStat(m, r => parseFloat(r.otHours) || 0))
@@ -258,15 +274,15 @@ function AnalysisPage() {
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 justify-start md:justify-center p-2">
+                    <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-6 px-1 custom-scrollbar justify-start">
                         {attendanceBoxes.map((box, idx) => (
-                            <div key={idx} className="flex flex-col items-center gap-1">
+                            <div key={idx} className="flex flex-col items-center gap-1.5 flex-shrink-0">
                                 <motion.div
                                     initial={{ scale: 0 }}
                                     animate={{ scale: 1 }}
                                     transition={{ delay: idx * 0.01 }}
                                     className={cn(
-                                        "w-8 h-8 md:w-10 md:h-10 rounded-lg shadow-sm transition-colors duration-300",
+                                        "w-7 h-7 md:w-9 md:h-9 rounded-lg shadow-sm transition-all duration-300",
                                         box.type === 'attendance' ? "bg-green-500 shadow-green-200" :
                                             box.type === 'leave' ? "bg-rose-500 shadow-rose-200" :
                                                 "bg-gray-100"
