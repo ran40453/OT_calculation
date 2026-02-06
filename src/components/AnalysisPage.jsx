@@ -170,6 +170,25 @@ function AnalysisPage() {
         return result;
     }
 
+    const otByMonth = chartMonths.map(m => getMonthlyStat(m, r => {
+        let hours = parseFloat(r.otHours) || 0;
+        if (hours === 0 && r.endTime) {
+            hours = calculateOTHours(r.endTime, settings?.rules?.standardEndTime || "17:30");
+        }
+        return hours;
+    }))
+
+    const compByMonth = chartMonths.map(m => getMonthlyStat(m, r => {
+        if (r.otType === 'leave') {
+            let h = parseFloat(r.otHours) || 0;
+            if (h === 0 && r.endTime) {
+                h = calculateOTHours(r.endTime, settings?.rules?.standardEndTime || "17:30");
+            }
+            return Math.floor(h);
+        }
+        return 0;
+    }))
+
     const bonusByMonth = chartMonths.map(m => getMonthlyStat(m, r => parseFloat(r.bonus) || 0))
     const otPayByMonth = chartMonths.map(m => getMonthlyStat(m, r => calculateDailySalary(r, { ...settings, liveRate }).otPay))
     const travelByMonth = chartMonths.map(m => getMonthlyStat(m, r => calculateDailySalary(r, { ...settings, liveRate }).travelAllowance))
