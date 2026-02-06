@@ -160,55 +160,37 @@ function AnalysisPage() {
         ]
     }
 
-    // 2. Attendance & Leave Stacked Bar Chart
+    // 2. Attendance & Leave Grid Logic (GitHub style)
     const currentMonthDays = eachDayOfInterval({ start: startOfMonth(now), end: endOfMonth(now) })
-    const attendanceData = currentMonthDays.map(day => {
+    const attendanceBoxes = currentMonthDays.map(day => {
         const dayStr = format(day, 'yyyy-MM-dd')
         const record = data.find(r => {
             const d = parse(r.date);
             return d instanceof Date && !isNaN(d) && format(d, 'yyyy-MM-dd') === dayStr;
         })
-        if (!record) return { attendance: 0, leave: 0 }
-        if (record.isLeave) return { attendance: 0, leave: 1 }
-        return { attendance: 1, leave: 0 }
+
+        let type = 'none'; // no record
+        if (record) {
+            type = record.isLeave ? 'leave' : 'attendance';
+        }
+        return { day, type };
     })
 
-    const stackedData = {
-        labels: currentMonthDays.map(d => format(d, 'd')),
-        datasets: [
-            {
-                label: '出勤',
-                data: attendanceData.map(d => d.attendance),
-                backgroundColor: 'rgba(52, 211, 153, 0.6)',
-                borderRadius: 2,
-            },
-            {
-                label: '休假',
-                data: attendanceData.map(d => d.leave),
-                backgroundColor: 'rgba(244, 63, 94, 0.6)',
-                borderRadius: 2,
-            }
-        ]
-    }
-
+    // Options for OT/Comp Chart
     const mergedOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } } } },
-        scales: {
-            y: { position: 'left', grid: { display: false }, ticks: { font: { size: 9 } } },
-            y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 9 } } },
-            x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top',
+                labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } }
+            }
         },
-    }
-
-    const stackedOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } } } },
         scales: {
-            y: { stacked: true, beginAtZero: true, max: 1, ticks: { stepSize: 1, font: { size: 9 } }, grid: { display: false } },
-            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 9 } } },
+            y: { position: 'left', grid: { display: false }, ticks: { font: { size: 9 } }, title: { display: true, text: '加班時數', font: { size: 8, weight: 'bold' } } },
+            y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 9 } }, title: { display: true, text: '補休單位', font: { size: 8, weight: 'bold' } } },
+            x: { grid: { display: false }, ticks: { font: { size: 9 } } },
         },
     }
 
@@ -263,13 +245,37 @@ function AnalysisPage() {
                     </div>
                 </div>
 
-                {/* Chart 2: Attendance Registry */}
-                <div className="neumo-card h-[300px] flex flex-col p-6">
-                    <h3 className="font-black italic flex items-center gap-2 mb-6 text-sm text-green-500 uppercase tracking-widest">
-                        本月出勤紀錄 (Stacked) <BarChart3 size={14} />
-                    </h3>
-                    <div className="flex-1">
-                        <Bar data={stackedData} options={stackedOptions} />
+                {/* Chart 2: Attendance Registry (GitHub Style) */}
+                <div className="neumo-card flex flex-col p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-black italic flex items-center gap-2 text-sm text-[#202731] uppercase tracking-widest">
+                            本月出勤紀錄 (Contribution Grid) <BarChart3 size={14} className="text-neumo-brand" />
+                        </h3>
+                        <div className="flex items-center gap-4 text-[8px] font-black uppercase tracking-widest">
+                            <span className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-sm" /> 出勤</span>
+                            <span className="flex items-center gap-1"><div className="w-2 h-2 bg-rose-500 rounded-sm" /> 休假</span>
+                            <span className="flex items-center gap-1"><div className="w-2 h-2 bg-gray-200 rounded-sm" /> 無資料</span>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 justify-start md:justify-center p-2">
+                        {attendanceBoxes.map((box, idx) => (
+                            <div key={idx} className="flex flex-col items-center gap-1">
+                                <motion.div
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    transition={{ delay: idx * 0.01 }}
+                                    className={cn(
+                                        "w-8 h-8 md:w-10 md:h-10 rounded-lg shadow-sm transition-colors duration-300",
+                                        box.type === 'attendance' ? "bg-green-500 shadow-green-200" :
+                                            box.type === 'leave' ? "bg-rose-500 shadow-rose-200" :
+                                                "bg-gray-100"
+                                    )}
+                                    title={`${format(box.day, 'yyyy-MM-dd')}: ${box.type}`}
+                                />
+                                <span className="text-[7px] font-black text-gray-400">{format(box.day, 'd')}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
