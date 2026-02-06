@@ -344,6 +344,23 @@ function AnalysisPage() {
         },
     }
 
+    const mergedOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top',
+                labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } }
+            }
+        },
+        scales: {
+            y: { position: 'left', grid: { display: false }, ticks: { font: { size: 9 } }, title: { display: true, text: '加班時數', font: { size: 8, weight: 'bold' } } },
+            y1: { position: 'right', grid: { display: false }, ticks: { font: { size: 9 } }, title: { display: true, text: '補休單位', font: { size: 8, weight: 'bold' } } },
+            x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+        },
+    }
+
     const countryStats = () => {
         const counts = {}
         data.forEach(r => {
