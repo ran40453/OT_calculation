@@ -30,7 +30,12 @@ function CalendarPage() {
     }
 
     const getRecordForDay = (day) => {
-        return records.find(r => isSameDay(new Date(r.date), day))
+        const dayStr = format(day, 'yyyy-MM-dd')
+        return records.find(r => {
+            if (!r.date) return false
+            const dStr = typeof r.date === 'string' ? r.date.split('T')[0] : format(new Date(r.date), 'yyyy-MM-dd')
+            return dStr === dayStr
+        })
     }
 
     const handleUpdateRecord = (updatedRecord) => {
@@ -97,18 +102,18 @@ function CalendarPage() {
             </div>
 
             {/* Calendar Rows */}
-            <div className="space-y-3 md:space-y-4 pb-12">
-                {/* Weekday Labels (Desktop) */}
-                <div className="hidden md:flex gap-4 mb-2">
+            <div className="space-y-3 pb-12">
+                {/* Weekday Labels (Always 7 columns) */}
+                <div className="flex gap-2 md:gap-4 mb-2">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="flex-1 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        <div key={day} className="flex-1 text-center text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">
                             {day}
                         </div>
                     ))}
                 </div>
 
                 {weeks.map((week, weekIdx) => (
-                    <div key={weekIdx} className="flex flex-col md:flex-row gap-3 md:gap-4 min-h-[100px]">
+                    <div key={weekIdx} className="flex flex-row gap-2 md:gap-4 min-h-[60px] md:min-h-[100px]">
                         {week.map((day) => (
                             <DayCard
                                 key={format(day, 'yyyy-MM-dd')}

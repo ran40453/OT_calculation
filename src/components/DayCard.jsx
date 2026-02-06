@@ -120,12 +120,14 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
 
     const handleSave = (e) => {
         if (e) e.stopPropagation();
+        console.log(`DayCard: Saving ${format(day, 'yyyy-MM-dd')}`, { endTime, travelCountry, isHoliday, isLeave, otType });
         syncUpdate();
-        onFocus();
+        // Removed onFocus() to keep expanded as requested
     }
 
     const handleCancel = (e) => {
         if (e) e.stopPropagation();
+        console.log(`DayCard: Canceling ${format(day, 'yyyy-MM-dd')}`);
         // Reset local state to original record values
         if (record) {
             let rawTime = record.endTime || '17:30';
@@ -140,7 +142,7 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
             setIsLeave(record.isLeave || false)
             setOtType(record.otType || 'pay')
         }
-        onFocus();
+        // Removed onFocus() to keep expanded as requested
     }
 
     return (
@@ -169,8 +171,8 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
                         {format(day, 'dd')}
                     </span>
 
-                    {/* Icons below date */}
-                    <div className="flex items-center gap-1.5 h-4">
+                    {/* Icons below date - Hidden on mobile compact unless focused */}
+                    <div className={cn("items-center gap-1.5 h-4", isFocused ? "flex" : "hidden md:flex")}>
                         {isHoliday && <Palmtree size={12} className="text-orange-500" strokeWidth={3} />}
                         {isLeave && <Moon size={12} className="text-indigo-400" strokeWidth={3} />}
                         {travelCountry && (
@@ -181,7 +183,7 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
                     </div>
                 </div>
 
-                {/* Right of date: OT & Money */}
+                {/* Right of date: OT & Money - Money hidden on mobile compact */}
                 <div className="flex flex-col items-end">
                     {otHours > 0 && (
                         <div className="flex items-center gap-1">
@@ -194,7 +196,7 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
                         </div>
                     )}
                     {dailySalary > 0 && !isLeave && (
-                        <span className="text-[9px] font-bold text-gray-400 tabular-nums">
+                        <span className={cn("text-[9px] font-bold text-gray-400 tabular-nums", isFocused ? "block" : "hidden md:block")}>
                             ${Math.round(dailySalary).toLocaleString()}
                         </span>
                     )}

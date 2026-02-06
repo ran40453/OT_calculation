@@ -106,12 +106,21 @@ function AnalysisPage() {
     const calcStats = () => {
         const getMetrics = (records) => {
             const totalSalary = records.reduce((sum, r) => sum + calculateDailySalary(r, { ...settings, liveRate }), 0)
-            const totalOT = records.reduce((sum, r) => sum + (parseFloat(r.otHours) || 0), 0)
+            const totalOT = records.reduce((sum, r) => {
+                let hours = parseFloat(r.otHours)
+                // Fallback: Recalculate if endTime exists but hours is 0/missing
+                if ((!hours || hours === 0) && r.endTime && settings?.rules?.standardEndTime) {
+                    hours = calculateOTHours(r.endTime, settings.rules.standardEndTime)
+                }
+                return sum + (isNaN(hours) ? 0 : hours)
+            }, 0)
             const totalComp = records.reduce((sum, r) => sum + calculateCompLeaveUnits(r), 0)
             return { totalSalary, totalOT, totalComp }
         }
 
+        console.log('Analysis: Records in rolling year:', rollingYearRecords.length);
         const yearMetrics = getMetrics(rollingYearRecords)
+        console.log('Analysis: Year OT calculated:', yearMetrics.totalOT);
         const monthMetrics = getMetrics(currentMonthRecords)
 
         const rollingAnnualSalary = (settings.salary?.baseMonthly || 50000) * 12 + yearMetrics.totalSalary
@@ -145,7 +154,15 @@ function AnalysisPage() {
         }, 0)
     }
 
-    const otByMonth = chartMonths.map(m => getMonthlyStat(m, r => parseFloat(r.otHours) || 0))
+    const otByMonth = chartMonths.map(m => getMonthlyStat(m, r => {
+        let hours = parseFloat(r.otHours)
+        if ((!hours || hours === 0) && r.endTime && settings?.rules?.standardEndTime) {
+            hours = calculateOTHours(r.endTime, settings.rules.standardEndTime)
+        }
+        return isNaN(hours) ? 0 : hours;
+    }))
+
+    console.log('Analysis: OT by month array:', otByMonth);
     const compByMonth = chartMonths.map(m => getMonthlyStat(m, r => calculateCompLeaveUnits(r)))
 
     // 1. Merged Chart: OT Hours & Comp Leave
