@@ -226,24 +226,25 @@ function AnalysisPage({ isPrivacy }) {
         labels: chartMonths.map(m => format(m, 'MMM')),
         datasets: [
             {
-                label: '獎金',
-                data: bonusByMonth,
-                borderColor: 'rgb(245, 158, 11)', // Amber 500
-                backgroundColor: 'rgba(245, 158, 11, 0.95)',
-                fill: true,
+                label: '當月總收入',
+                data: totalIncomeByMonth,
+                borderColor: 'rgb(253, 224, 71)', // Yellow
+                backgroundColor: 'rgba(253, 224, 71, 0.1)',
+                fill: false,
                 tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: 'rgb(245, 158, 11)',
+                pointRadius: 5,
+                pointBackgroundColor: 'rgb(253, 224, 71)',
+                borderWidth: 3,
             },
             {
-                label: '加班費',
-                data: otPayByMonth,
-                borderColor: 'rgb(99, 102, 241)', // Indigo 500
-                backgroundColor: 'rgba(99, 102, 241, 0.95)',
+                label: '底薪',
+                data: baseByMonth,
+                borderColor: 'rgb(56, 189, 248)', // Sky 400
+                backgroundColor: 'rgba(56, 189, 248, 0.8)',
                 fill: true,
                 tension: 0.4,
                 pointRadius: 4,
-                pointBackgroundColor: 'rgb(99, 102, 241)',
+                pointBackgroundColor: 'rgb(56, 189, 248)',
             },
             {
                 label: '出差費',
@@ -256,25 +257,24 @@ function AnalysisPage({ isPrivacy }) {
                 pointBackgroundColor: 'rgb(16, 185, 129)',
             },
             {
-                label: '底薪',
-                data: baseByMonth,
-                borderColor: 'rgb(107, 114, 128)', // Gray 500
-                backgroundColor: 'rgba(107, 114, 128, 0.8)',
+                label: '獎金',
+                data: bonusByMonth,
+                borderColor: 'rgb(245, 158, 11)', // Amber 500
+                backgroundColor: 'rgba(245, 158, 11, 0.95)',
                 fill: true,
                 tension: 0.4,
                 pointRadius: 4,
-                pointBackgroundColor: 'rgb(107, 114, 128)',
+                pointBackgroundColor: 'rgb(245, 158, 11)',
             },
             {
-                label: '當月總收入',
-                data: totalIncomeByMonth,
-                borderColor: 'rgb(253, 224, 71)', // Yellow 300
-                backgroundColor: 'transparent',
-                fill: false,
+                label: '加班費',
+                data: otPayByMonth,
+                borderColor: 'rgb(255, 69, 0)', // Orange Red
+                backgroundColor: 'rgba(255, 69, 0, 0.95)',
+                fill: true,
                 tension: 0.4,
-                pointRadius: 5,
-                pointBackgroundColor: 'rgb(253, 224, 71)',
-                borderWidth: 3,
+                pointRadius: 4,
+                pointBackgroundColor: 'rgb(255, 69, 0)',
             }
         ]
     }
