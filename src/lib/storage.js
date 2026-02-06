@@ -276,6 +276,19 @@ const recordsToGistFormat = (records) => {
  * Fetch data from GitHub Gist
  */
 export const fetchRecordsFromGist = async () => {
+    // 1. Check for unsynced local changes (Dirty Flag)
+    // If we have local changes that failed to sync, DO NOT fetch from Gist (which would be old)
+    // Instead, try to push our local data to Gist
+    const isDirty = localStorage.getItem('ot-data-dirty') === 'true';
+    if (isDirty) {
+        console.warn('Gist Sync: Local changes found (Dirty). preventing overwrite and attempting push.');
+        const localData = loadData();
+        if (localData.length > 0) {
+            syncRecordsToGist(localData); // Background push
+        }
+        return localData;
+    }
+
     const settings = loadSettings();
     const token = settings?.githubToken;
     const gistId = settings?.gistId;
@@ -311,7 +324,7 @@ export const fetchRecordsFromGist = async () => {
                 return loadData(); // Return local data instead
             }
 
-            saveData(standardized);
+            saveData(standardized, false); // false = not dirty, because it came from cloud
             return standardized;
         }
     } catch (error) {
@@ -347,6 +360,11 @@ export const syncRecordsToGist = async (records) => {
                 }
             })
         });
+
+        if (response.ok) {
+            localStorage.setItem('ot-data-dirty', 'false'); // Sync success, clear dirty flag
+        }
+
         return { ok: response.ok };
     } catch (error) {
         console.error('Failed to sync to Gist:', error);
@@ -496,10 +514,11 @@ export const loadData = () => {
     }
 };
 
-export const saveData = (data) => {
+export const saveData = (data, isDirty = true) => {
     try {
         localStorage.setItem(DATA_KEY, JSON.stringify(Array.isArray(data) ? data : []));
         localStorage.setItem('last-local-update', Date.now().toString());
+        localStorage.setItem('ot-data-dirty', isDirty.toString());
     } catch (e) {
         console.error('Storage: Failed to save records', e);
     }
@@ -508,8 +527,10 @@ export const saveData = (data) => {
 export const loadSettings = () => {
     try {
         const settings = localStorage.getItem(SETTINGS_KEY);
+        // console.log('Storage: Loading settings raw:', settings ? 'Found' : 'Empty'); 
         if (!settings) return defaultSettings;
         const parsed = JSON.parse(settings);
+        // console.log('Storage: Loaded settings:', { ...parsed, githubToken: parsed.githubToken ? '***' : 'missing' });
         return { ...defaultSettings, ...parsed };
     } catch (e) {
         console.error('Storage: Failed to load settings', e);
@@ -519,6 +540,7 @@ export const loadSettings = () => {
 
 export const saveSettings = (settings) => {
     try {
+        console.log('Storage: Saving settings...', { ...settings, githubToken: settings.githubToken ? '***' : 'missing' });
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (e) {
         console.error('Storage: Failed to save settings', e);
@@ -565,20 +587,19 @@ export const addOrUpdateRecord = async (record) => {
         newData = [...data, record];
     }
 
-    // Auto-save new bonus categories to settings for persistence
+    // Auto-save new bonus categories to settings
     if (record.recordType === 'bonus' && record.bonusCategory) {
         const settings = loadSettings();
         const currentCats = settings.bonusCategories || ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅'];
         if (!currentCats.includes(record.bonusCategory)) {
             settings.bonusCategories = [...currentCats, record.bonusCategory];
             saveSettings(settings);
-            syncSettingsToGist(settings); // Fire and forget for settings sync
+            syncSettingsToGist(settings); // Fire and forget
         }
     }
 
     saveData(newData);
 
-    // Background sync - now awaited to give feedback
     const syncResult = await syncRecordsToSheets(newData);
     return { records: newData, sync: syncResult };
 };
