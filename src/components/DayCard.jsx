@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { format, isToday, getDay, isSameDay } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Clock, ChevronDown, ChevronUp, Check, Palmtree, Moon, DollarSign, Coffee, CreditCard } from 'lucide-react'
+import { MapPin, Clock, ChevronDown, ChevronUp, Check, Palmtree, Moon, DollarSign, Coffee, CreditCard, X } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { loadSettings, calculateOTHours, calculateDailySalary, calculateCompLeaveUnits, fetchExchangeRate } from '../lib/storage'
 
@@ -72,7 +72,7 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
             window.removeEventListener('mouseup', handleEnd)
             window.removeEventListener('touchmove', handleMove)
             window.removeEventListener('touchend', handleEnd)
-            syncUpdate({ endTime: currentEndTimeRef.current })
+            // No auto-sync here anymore, wait for Save button
         }
 
         window.addEventListener('mousemove', handleMove)
@@ -115,9 +115,32 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
 
     const toggleOtType = (e) => {
         e.stopPropagation();
-        const next = otType === 'pay' ? 'leave' : 'pay';
-        setOtType(next);
-        syncUpdate({ otType: next });
+        setOtType(otType === 'pay' ? 'leave' : 'pay');
+    }
+
+    const handleSave = (e) => {
+        if (e) e.stopPropagation();
+        syncUpdate();
+        onFocus();
+    }
+
+    const handleCancel = (e) => {
+        if (e) e.stopPropagation();
+        // Reset local state to original record values
+        if (record) {
+            let rawTime = record.endTime || '17:30';
+            if (rawTime.includes('T')) {
+                try { rawTime = format(new Date(rawTime), 'HH:mm'); }
+                catch (e) { rawTime = '17:30'; }
+            }
+            setEndTime(rawTime)
+            const country = record.travelCountry === '越南' || record.travelCountry === 'VIETNAM' ? 'VN' : record.travelCountry;
+            setTravelCountry(country || '')
+            setIsHoliday(record.isHoliday || false)
+            setIsLeave(record.isLeave || false)
+            setOtType(record.otType || 'pay')
+        }
+        onFocus();
     }
 
     return (
@@ -189,19 +212,19 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
                         {/* Status Grid */}
                         <div className="flex gap-2">
                             <button
-                                onClick={(e) => { e.stopPropagation(); setIsHoliday(!isHoliday); syncUpdate({ isHoliday: !isHoliday }); }}
+                                onClick={(e) => { e.stopPropagation(); setIsHoliday(!isHoliday); }}
                                 className={cn("flex-1 py-3 rounded-2xl flex items-center justify-center gap-2 text-[8px] font-bold uppercase transition-all", isHoliday ? "neumo-pressed text-orange-500" : "neumo-raised text-gray-400")}
                             >
                                 <Palmtree size={14} /> 假日
                             </button>
                             <button
-                                onClick={(e) => { e.stopPropagation(); setIsLeave(!isLeave); syncUpdate({ isLeave: !isLeave }); }}
+                                onClick={(e) => { e.stopPropagation(); setIsLeave(!isLeave); }}
                                 className={cn("flex-1 py-3 rounded-2xl flex items-center justify-center gap-2 text-[8px] font-bold uppercase transition-all", isLeave ? "neumo-pressed text-indigo-500" : "neumo-raised text-gray-400")}
                             >
                                 <Moon size={14} /> 請假
                             </button>
                             <button
-                                onClick={(e) => { e.stopPropagation(); const seq = ['', 'VN', 'IN', 'CN']; setTravelCountry(seq[(seq.indexOf(travelCountry) + 1) % seq.length]); syncUpdate({ travelCountry: seq[(seq.indexOf(travelCountry) + 1) % seq.length] }); }}
+                                onClick={(e) => { e.stopPropagation(); const seq = ['', 'VN', 'IN', 'CN']; setTravelCountry(seq[(seq.indexOf(travelCountry) + 1) % seq.length]); }}
                                 className={cn("flex-1 py-3 rounded-2xl flex items-center justify-center gap-2 text-[8px] font-bold uppercase transition-all", travelCountry ? "neumo-pressed text-green-600" : "neumo-raised text-gray-400")}
                             >
                                 <MapPin size={14} /> {travelCountry || '出差'}
@@ -276,17 +299,22 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
                             </div>
                         )}
 
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                syncUpdate(); // Final sync before closing
-                                onFocus();
-                            }}
-                            className="neumo-button w-full h-12 flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-neumo-brand"
-                        >
-                            <Check size={16} strokeWidth={3} />
-                            關閉詳情
-                        </button>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleCancel}
+                                className="flex-1 neumo-button h-12 flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-gray-400"
+                            >
+                                <X size={16} strokeWidth={3} />
+                                取消
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                className="flex-[2] neumo-button h-12 flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-neumo-brand"
+                            >
+                                <Check size={16} strokeWidth={3} />
+                                儲存變更
+                            </button>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
