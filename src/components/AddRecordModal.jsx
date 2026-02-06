@@ -10,7 +10,7 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
     const [isHoliday, setIsHoliday] = useState(false)
     const [isLeave, setIsLeave] = useState(false)
     const [endTime, setEndTime] = useState('17:30')
-    const [otType, setOtType] = setOtType = useState('pay')
+    const [otType, setOtType] = useState('pay')
     const [isDragging, setIsDragging] = useState(false)
     const [mode, setMode] = useState('attendance') // 'attendance' or 'bonus'
     const [bonus, setBonus] = useState('')

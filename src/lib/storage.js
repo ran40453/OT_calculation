@@ -2,6 +2,8 @@ import { format, getDay } from 'date-fns';
 
 const DATA_KEY = 'ot-calculation-data';
 const SETTINGS_KEY = 'ot-calculation-settings';
+const GIST_ID = '7ce68f2145a8c8aa4eabe5127f351f71';
+const GET_GIST_URL = (id) => `https://api.github.com/gists/${id}`;
 
 const defaultSettings = {
     allowance: {
@@ -20,51 +22,8 @@ const defaultSettings = {
     }
 };
 
-/**
- * Standardizes record format from historical or different schemas
- */
-export const standardizeRecords = (records) => {
-    if (!Array.isArray(records)) return [];
-    return records.map(r => {
-        const nr = { ...r };
 
-        // 1. Handle tiered OT hours (Historical format: { "1.34": 2, "1.67": 2 })
-        const h134 = parseFloat(nr['1.34']) || 0;
-        const h167 = parseFloat(nr['1.67']) || 0;
-        const h267 = parseFloat(nr['2.67']) || 0;
-        const h2 = parseFloat(nr['2']) || 0;
-        const tieredSum = h134 + h167 + h267 + h2;
-
-        // Use either existing otHours or calculate from tiers
-        let otHours = parseFloat(nr.otHours);
-        if (isNaN(otHours) || otHours === 0) {
-            otHours = tieredSum;
-        }
-
-        // 2. Map property names (Historical or snake_case variants)
-        const travelCountry = nr.travelCountry || nr.travel_country || '';
-        const isHoliday = !!(nr.isHoliday || nr.is_holiday);
-        const isLeave = !!(nr.isLeave || nr.is_leave);
-        const isRestDay = !!(nr.isRestDay || nr.is_rest_day);
-        const endTime = nr.endTime || nr.end_time || '';
-        const otType = nr.otType || nr.ot_type || 'pay';
-        const bonus = parseFloat(nr.bonus) || 0;
-        const recordType = nr.recordType || (bonus > 0 ? 'bonus' : 'attendance');
-
-        return {
-            ...nr,
-            otHours,
-            travelCountry,
-            isHoliday,
-            isLeave,
-            isRestDay,
-            endTime,
-            otType,
-            bonus,
-            recordType
-        };
-    });
-};
+// Logic moved above for TDZ safety
 
 // Helper to standardize country codes (exported for component use)
 export const standardizeCountry = (c) => {
@@ -122,6 +81,66 @@ export const calculateOTHours = (endTimeStr, standardEndTimeStr = "17:30") => {
     } catch (e) {
         return 0;
     }
+};
+
+/**
+ * Calculates comp leave units
+ */
+export const calculateCompLeaveUnits = (record) => {
+    if (record.otType === 'leave' && record.otHours) {
+        // User requested: 以 1 為單位，半小時不計入
+        const h = parseFloat(record.otHours);
+        return isNaN(h) ? 0 : Math.floor(h);
+    }
+    return 0;
+};
+
+/**
+ * Standardizes record format from historical or different schemas
+ */
+export const standardizeRecords = (records) => {
+    if (!Array.isArray(records)) return [];
+    return records.map(r => {
+        const nr = { ...r };
+
+        // 1. Handle tiered OT hours (Historical format: { "1.34": 2, "1.67": 2 })
+        const h134 = parseFloat(nr['1.34']) || 0;
+        const h167 = parseFloat(nr['1.67']) || 0;
+        const h267 = parseFloat(nr['2.67']) || 0;
+        const h2 = parseFloat(nr['2']) || 0;
+        const tieredSum = h134 + h167 + h267 + h2;
+
+        // Use either existing otHours or calculate from tiers
+        let otHours = parseFloat(nr.otHours);
+        if (isNaN(otHours) || otHours === 0) {
+            otHours = tieredSum;
+        }
+
+        // 2. Handle Bonus & Record Type (User added logic)
+        const bonus = parseFloat(nr.bonus) || 0;
+        const recordType = nr.recordType || (bonus > 0 ? 'bonus' : 'attendance');
+
+        // 3. Map property names (Historical or snake_case variants)
+        const travelCountry = nr.travelCountry || nr.travel_country || '';
+        const isHoliday = !!(nr.isHoliday || nr.is_holiday);
+        const isLeave = !!(nr.isLeave || nr.is_leave);
+        const isRestDay = !!(nr.isRestDay || nr.is_rest_day);
+        const endTime = nr.endTime || nr.end_time || '';
+        const otType = nr.otType || nr.ot_type || 'pay';
+
+        return {
+            ...nr,
+            otHours,
+            bonus,
+            recordType,
+            travelCountry,
+            isHoliday,
+            isLeave,
+            isRestDay,
+            endTime,
+            otType
+        };
+    });
 };
 
 /**
@@ -227,20 +246,8 @@ export const calculateDailySalary = (record, settings) => {
     };
 };
 
-/**
- * Calculates comp leave units
- */
-export const calculateCompLeaveUnits = (record) => {
-    if (record.otType === 'leave' && record.otHours) {
-        // User requested: 以 1 為單位，半小時不計入
-        const h = parseFloat(record.otHours);
-        return isNaN(h) ? 0 : Math.floor(h);
-    }
-    return 0;
-};
 
-const GIST_ID = '7ce68f2145a8c8aa4eabe5127f351f71';
-const GET_GIST_URL = (id) => `https://api.github.com/gists/${id}`;
+// Gist Helper Constants already moved to top
 
 /**
  * Maps React record to Gist format (just JSON)
