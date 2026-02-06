@@ -215,8 +215,8 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 label: '當月總收入',
                 data: totalIncomeByMonth,
                 borderColor: 'rgb(253, 224, 71)', // Yellow
-                backgroundColor: 'rgba(253, 224, 71, 0.0)', // Transparent fill
-                fill: false,
+                backgroundColor: 'rgba(253, 224, 71, 0.4)', // Semi-transparent fill to see grid
+                fill: true,
                 tension: 0.4,
                 pointRadius: 5,
                 pointBackgroundColor: 'rgb(253, 224, 71)',
@@ -226,8 +226,8 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 label: '底薪',
                 data: baseByMonth,
                 borderColor: 'rgb(56, 189, 248)', // Sky 400
-                backgroundColor: 'rgb(56, 189, 248)', // Solid
-                fill: true,
+                backgroundColor: 'rgba(56, 189, 248, 0.0)', // Transparent
+                fill: false,
                 tension: 0.4,
                 pointRadius: 4,
                 pointBackgroundColor: 'rgb(56, 189, 248)',
@@ -236,8 +236,8 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 label: '出差費',
                 data: travelByMonth,
                 borderColor: 'rgb(16, 185, 129)', // Emerald 500
-                backgroundColor: 'rgb(16, 185, 129)', // Solid
-                fill: true,
+                backgroundColor: 'rgba(16, 185, 129, 0.0)', // Transparent
+                fill: false,
                 tension: 0.4,
                 pointRadius: 4,
                 pointBackgroundColor: 'rgb(16, 185, 129)',
@@ -246,8 +246,8 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 label: '獎金',
                 data: bonusByMonth,
                 borderColor: 'rgb(245, 158, 11)', // Amber 500
-                backgroundColor: 'rgb(245, 158, 11)', // Solid
-                fill: true,
+                backgroundColor: 'rgba(245, 158, 11, 0.0)', // Transparent
+                fill: false,
                 tension: 0.4,
                 pointRadius: 4,
                 pointBackgroundColor: 'rgb(245, 158, 11)',
@@ -256,8 +256,8 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 label: '加班費',
                 data: otPayByMonth,
                 borderColor: 'rgb(255, 69, 0)', // Orange Red
-                backgroundColor: 'rgb(255, 69, 0)', // Solid
-                fill: true,
+                backgroundColor: 'rgba(255, 69, 0, 0.0)', // Transparent
+                fill: false,
                 tension: 0.4,
                 pointRadius: 4,
                 pointBackgroundColor: 'rgb(255, 69, 0)',
