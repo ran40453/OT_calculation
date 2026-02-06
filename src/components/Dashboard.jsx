@@ -5,10 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { loadData, loadSettings, fetchRecordsFromGist, calculateCompLeaveUnits, calculateDailySalary, fetchExchangeRate, standardizeCountry, calculateOTHours } from '../lib/storage'
 import { cn } from '../lib/utils'
 
-function Dashboard() {
+function Dashboard({ isPrivacy, setIsPrivacy }) {
     const [data, setData] = useState([])
     const [settings, setSettings] = useState(null)
-    const [isPrivacy, setIsPrivacy] = useState(false)
     const [liveRate, setLiveRate] = useState(null)
     const today = new Date()
 

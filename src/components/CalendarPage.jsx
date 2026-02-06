@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { loadData, addOrUpdateRecord, fetchRecordsFromGist } from '../lib/storage'
 import DayCard from './DayCard'
 
-function CalendarPage() {
+function CalendarPage({ isPrivacy }) {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [records, setRecords] = useState([])
     const [focusedDay, setFocusedDay] = useState(null)
@@ -128,6 +128,7 @@ function CalendarPage() {
                                 onUpdate={handleUpdateRecord}
                                 isFocused={focusedDay && isSameDay(day, focusedDay)}
                                 onFocus={() => setFocusedDay(isSameDay(day, focusedDay) ? null : day)}
+                                isPrivacy={isPrivacy}
                             />
                         ))}
                     </motion.div>

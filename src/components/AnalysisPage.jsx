@@ -34,12 +34,14 @@ ChartJS.register(
     Filler
 )
 
-function AnalysisPage() {
+function AnalysisPage({ isPrivacy }) {
     const [data, setData] = useState([])
     const [settings, setSettings] = useState(null)
     const [liveRate, setLiveRate] = useState(32.5)
     const [isLoading, setIsLoading] = useState(true)
     const [isBonusDetailOpen, setIsBonusDetailOpen] = useState(false)
+
+    const mask = (val) => isPrivacy ? '••••' : val;
 
     useEffect(() => {
         const init = async () => {
@@ -414,8 +416,8 @@ function AnalysisPage() {
                 <div onClick={() => setIsBonusDetailOpen(true)} className="cursor-pointer">
                     <StatCard
                         label="累計獎金"
-                        value={`$${Math.round(stats?.totalBonusInYear || 0).toLocaleString()}`}
-                        sub={`本月增: $${Math.round(stats?.totalBonusInMonth || 0).toLocaleString()}`}
+                        value={mask(`$${Math.round(stats?.totalBonusInYear || 0).toLocaleString()}`)}
+                        sub={`本月增: ${mask('$' + Math.round(stats?.totalBonusInMonth || 0).toLocaleString())}`}
                         icon={Gift}
                         color="text-amber-500"
                     />
@@ -515,6 +517,7 @@ function AnalysisPage() {
                     saveData(newData);
                     syncRecordsToGist(newData);
                 }}
+                isPrivacy={isPrivacy}
             />
         </div>
     )
@@ -565,9 +568,11 @@ function HistoryCountCard({ label, value, sub, icon: Icon, color, bgColor }) {
     )
 }
 
-function BonusDetailModal({ isOpen, onClose, data, onUpdate }) {
+function BonusDetailModal({ isOpen, onClose, data, onUpdate, isPrivacy }) {
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({ amount: 0, category: '', name: '' });
+
+    const mask = (val) => isPrivacy ? '••••' : val;
 
     if (!isOpen) return null;
 
@@ -702,7 +707,7 @@ function BonusDetailModal({ isOpen, onClose, data, onUpdate }) {
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className="text-right">
-                                                <p className="text-sm font-black text-gray-800">${Math.round(b.amount).toLocaleString()}</p>
+                                                <p className="text-sm font-black text-gray-800">{mask('$' + Math.round(b.amount).toLocaleString())}</p>
                                             </div>
                                             <div className="flex gap-1">
                                                 <button onClick={() => startEdit(b)} className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors">

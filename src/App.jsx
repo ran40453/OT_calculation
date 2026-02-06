@@ -13,6 +13,13 @@ function App() {
     const [activeTab, setActiveTab] = useState('home')
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [settings, setSettings] = useState(null)
+    const [isPrivacy, setIsPrivacy] = useState(() => localStorage.getItem('ot-privacy') === 'true')
+
+    const togglePrivacy = () => {
+        const next = !isPrivacy
+        setIsPrivacy(next)
+        localStorage.setItem('ot-privacy', next)
+    }
 
     React.useEffect(() => {
         // Initial sync from Google Sheets
@@ -30,15 +37,15 @@ function App() {
     const renderPage = () => {
         switch (activeTab) {
             case 'home':
-                return <Dashboard />
+                return <Dashboard isPrivacy={isPrivacy} setIsPrivacy={togglePrivacy} />
             case 'calendar':
-                return <CalendarPage />
+                return <CalendarPage isPrivacy={isPrivacy} />
             case 'analysis':
-                return <AnalysisPage />
+                return <AnalysisPage isPrivacy={isPrivacy} />
             case 'settings':
                 return <SettingsPage />
             default:
-                return <Dashboard />
+                return <Dashboard isPrivacy={isPrivacy} setIsPrivacy={togglePrivacy} />
         }
     }
 

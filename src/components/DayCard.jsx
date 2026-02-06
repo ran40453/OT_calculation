@@ -5,7 +5,7 @@ import { MapPin, Clock, ChevronDown, ChevronUp, Check, Palmtree, Moon, DollarSig
 import { cn } from '../lib/utils'
 import { loadSettings, calculateOTHours, calculateDailySalary, calculateCompLeaveUnits, fetchExchangeRate, standardizeCountry } from '../lib/storage'
 
-function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFocus }) {
+function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFocus, isPrivacy }) {
     const [endTime, setEndTime] = useState(record?.endTime || '17:30')
     const [travelCountry, setTravelCountry] = useState(record?.travelCountry || '')
     const [isHoliday, setIsHoliday] = useState(record?.isHoliday || false)
@@ -115,6 +115,8 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
     const dailySalary = salaryMetrics?.total || 0;
     const compUnits = calculateCompLeaveUnits({ otHours, otType });
 
+    const mask = (val) => isPrivacy ? '••••' : val;
+
     const getCountryCode = (name) => {
         const mapping = { '印度': 'IN', '越南': 'VN', '越南': 'VN', 'VIETNAM': 'VN', '大陸': 'CN' };
         return mapping[name] || name;
@@ -205,7 +207,7 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
                     {/* Salary under date on mobile/compact */}
                     {dailySalary > 0 && !isLeave && (
                         <span className={cn("text-[7px] md:hidden font-bold text-gray-400 tabular-nums")}>
-                            ${Math.round(dailySalary).toLocaleString()}
+                            {mask('$' + Math.round(dailySalary).toLocaleString())}
                         </span>
                     )}
 
@@ -235,7 +237,7 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
                     )}
                     {dailySalary > 0 && !isLeave && (
                         <span className="hidden md:block text-[9px] font-bold text-gray-400 tabular-nums">
-                            ${Math.round(dailySalary).toLocaleString()}
+                            {mask('$' + Math.round(dailySalary).toLocaleString())}
                         </span>
                     )}
                 </div>
@@ -329,7 +331,7 @@ function DayCard({ day, record, onUpdate, isCurrentMonth = true, isFocused, onFo
                                             "text-2xl font-black tabular-nums",
                                             otType === 'leave' ? "text-indigo-600" : "text-green-600"
                                         )}>
-                                            {otType === 'leave' ? compUnits.toFixed(0) : `${Math.round(dailySalary).toLocaleString()}`}
+                                            {otType === 'leave' ? compUnits.toFixed(0) : mask(`${Math.round(dailySalary).toLocaleString()}`)}
                                         </span>
                                         <span className="text-[9px] font-bold text-gray-400 uppercase">
                                             {otType === 'leave' ? '單' : 'TWD'}
