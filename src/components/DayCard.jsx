@@ -1,3 +1,9 @@
+import React, { useState, useEffect } from 'react'
+import { format, isToday, getDay, isAfter, startOfDay } from 'date-fns'
+import { motion } from 'framer-motion'
+import { Palmtree, Moon, DollarSign, Coffee } from 'lucide-react'
+import { cn } from '../lib/utils'
+import { loadSettings, calculateOTHours, calculateDailySalary, fetchExchangeRate, standardizeCountry } from '../lib/storage'
 
 function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
     const [settings, setSettings] = useState(null)
