@@ -48,6 +48,8 @@ export const standardizeRecords = (records) => {
         const isRestDay = !!(nr.isRestDay || nr.is_rest_day);
         const endTime = nr.endTime || nr.end_time || '';
         const otType = nr.otType || nr.ot_type || 'pay';
+        const bonus = parseFloat(nr.bonus) || 0;
+        const recordType = nr.recordType || (bonus > 0 ? 'bonus' : 'attendance');
 
         return {
             ...nr,
@@ -57,7 +59,9 @@ export const standardizeRecords = (records) => {
             isLeave,
             isRestDay,
             endTime,
-            otType
+            otType,
+            bonus,
+            recordType
         };
     });
 };
