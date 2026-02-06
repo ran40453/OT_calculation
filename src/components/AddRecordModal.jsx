@@ -19,7 +19,7 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
     const [showCustomCategory, setShowCustomCategory] = useState(false)
     const [customCategory, setCustomCategory] = useState('')
 
-    const bonusCategories = ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅']
+    const bonusCategories = settings?.bonusCategories || ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅']
 
     if (!isOpen) return null
 

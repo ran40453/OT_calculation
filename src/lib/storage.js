@@ -19,7 +19,8 @@ const defaultSettings = {
         ot2: 1.67,
         ot3: 2.0,
         standardEndTime: "18:00", // Default off-work time
-    }
+    },
+    bonusCategories: ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅']
 };
 
 
@@ -450,6 +451,17 @@ export const addOrUpdateRecord = (record) => {
         newData[index] = { ...newData[index], ...record };
     } else {
         newData = [...data, record];
+    }
+
+    // Auto-save new bonus categories to settings for persistence
+    if (record.recordType === 'bonus' && record.bonusCategory) {
+        const settings = loadSettings();
+        const currentCats = settings.bonusCategories || ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅'];
+        if (!currentCats.includes(record.bonusCategory)) {
+            settings.bonusCategories = [...currentCats, record.bonusCategory];
+            saveSettings(settings);
+            syncSettingsToGist(settings);
+        }
     }
 
     saveData(newData);
