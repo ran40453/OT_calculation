@@ -135,8 +135,16 @@ export const calculateDailySalary = (record, settings) => {
         travelAllowance = dailyUSD * rate;
     }
 
-    const total = baseDayPay + otPay + travelAllowance;
-    return isNaN(total) ? 0 : total;
+    const extra = otPay + travelAllowance;
+    const total = baseDayPay + extra;
+
+    return {
+        total: isNaN(total) ? 0 : total,
+        extra: isNaN(extra) ? 0 : extra,
+        otPay: isNaN(otPay) ? 0 : otPay,
+        travelAllowance: isNaN(travelAllowance) ? 0 : travelAllowance,
+        baseDayPay: isNaN(baseDayPay) ? 0 : baseDayPay
+    };
 };
 
 /**

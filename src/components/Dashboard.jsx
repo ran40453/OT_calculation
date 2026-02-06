@@ -76,8 +76,8 @@ function Dashboard() {
 
         // Sum of all daily calculated salaries (OT pay + Allowances)
         const extraPay = records.reduce((sum, r) => {
-            const val = calculateDailySalary(r, { ...settings, liveRate });
-            return sum + (isNaN(val) ? 0 : val);
+            const metrics = calculateDailySalary(r, { ...settings, liveRate });
+            return sum + (metrics?.extra || 0);
         }, 0)
 
         const baseMonthly = settings?.salary?.baseMonthly || 50000;

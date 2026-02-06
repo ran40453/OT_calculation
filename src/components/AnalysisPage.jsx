@@ -105,7 +105,10 @@ function AnalysisPage() {
 
     const calcStats = () => {
         const getMetrics = (records) => {
-            const totalSalary = records.reduce((sum, r) => sum + calculateDailySalary(r, { ...settings, liveRate }), 0)
+            const extraTotal = records.reduce((sum, r) => {
+                const results = calculateDailySalary(r, { ...settings, liveRate });
+                return sum + (results?.extra || 0);
+            }, 0)
             const totalOT = records.reduce((sum, r) => {
                 let hours = parseFloat(r.otHours)
                 // Fallback: Recalculate if endTime exists but hours is 0/missing
@@ -115,16 +118,26 @@ function AnalysisPage() {
                 return sum + (isNaN(hours) ? 0 : hours)
             }, 0)
             const totalComp = records.reduce((sum, r) => sum + calculateCompLeaveUnits(r), 0)
-            return { totalSalary, totalOT, totalComp }
+            return { extraTotal, totalOT, totalComp }
         }
 
-        console.log('Analysis: Records in rolling year:', rollingYearRecords.length);
         const yearMetrics = getMetrics(rollingYearRecords)
-        console.log('Analysis: Year OT calculated:', yearMetrics.totalOT);
         const monthMetrics = getMetrics(currentMonthRecords)
 
-        const rollingAnnualSalary = (settings.salary?.baseMonthly || 50000) * 12 + yearMetrics.totalSalary
+        const baseMonthly = settings.salary?.baseMonthly || 50000;
+        const rollingAnnualSalary = (baseMonthly * 12) + yearMetrics.extraTotal
         const rollingMonthlySalary = rollingAnnualSalary / 12
+
+        // Month Salary Verification: Base + this month's extra
+        const monthTotalIncome = baseMonthly + monthMetrics.extraTotal;
+
+        console.log('Analysis: Data Verification Audit', {
+            baseMonthly,
+            monthExtra: monthMetrics.extraTotal,
+            monthTotal: monthTotalIncome,
+            yearExtra: yearMetrics.extraTotal,
+            yearTotal: rollingAnnualSalary
+        });
 
         return {
             rollingAnnualSalary,
@@ -132,7 +145,8 @@ function AnalysisPage() {
             totalCompInYear: yearMetrics.totalComp,
             totalCompInMonth: monthMetrics.totalComp,
             yearOT: yearMetrics.totalOT,
-            monthOT: monthMetrics.totalOT
+            monthOT: monthMetrics.totalOT,
+            monthTotalIncome
         }
     }
 
