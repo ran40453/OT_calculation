@@ -2,8 +2,12 @@ import { format, getDay } from 'date-fns';
 
 const DATA_KEY = 'ot-calculation-data';
 const SETTINGS_KEY = 'ot-calculation-settings';
-const GIST_ID = '7ce68f2145a8c8aa4eabe5127f351f71';
 const GET_GIST_URL = (id) => `https://api.github.com/gists/${id}`;
+
+const getGistId = () => {
+    const s = loadSettings();
+    return s.gistId || '7ce68f2145a8c8aa4eabe5127f351f71'; // Fallback to legacy for migration
+};
 
 const defaultSettings = {
     allowance: {
@@ -273,11 +277,14 @@ const recordsToGistFormat = (records) => {
 export const fetchRecordsFromGist = async () => {
     const settings = loadSettings();
     const token = settings?.githubToken;
+    const gistId = settings?.gistId;
+    if (!gistId) return loadData();
+
     try {
         const headers = {};
         if (token) headers['Authorization'] = `token ${token}`;
 
-        const response = await fetch(GET_GIST_URL(GIST_ID), { headers });
+        const response = await fetch(GET_GIST_URL(gistId), { headers });
         const gist = await response.json();
         if (gist.files && gist.files['records.json']) {
             const recordsContent = gist.files['records.json'].content;
@@ -303,13 +310,14 @@ export const fetchRecordsFromGist = async () => {
 export const syncRecordsToGist = async (records) => {
     const settings = loadSettings();
     const token = settings.githubToken;
-    if (!token) {
-        console.warn('No GitHub token found in settings, cannot sync to Gist.');
-        return { ok: false, error: 'Token missing' };
+    const gistId = settings.gistId;
+    if (!token || !gistId) {
+        console.warn('Sync aborted: Missing token or Gist ID');
+        return { ok: false, error: 'Config missing' };
     }
 
     try {
-        const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+        const response = await fetch(`https://api.github.com/gists/${gistId}`, {
             method: 'PATCH',
             headers: {
                 'Authorization': `token ${token}`,
@@ -334,8 +342,12 @@ export const syncRecordsToGist = async (records) => {
  * Fetch settings from Gist
  */
 export const fetchSettingsFromGist = async () => {
+    const settings = loadSettings();
+    const gistId = settings.gistId;
+    if (!gistId) return settings;
+
     try {
-        const response = await fetch(GET_GIST_URL(GIST_ID));
+        const response = await fetch(GET_GIST_URL(gistId));
         const gist = await response.json();
         if (gist.files && gist.files['settings.json']) {
             const remoteSettings = JSON.parse(gist.files['settings.json'].content);
@@ -356,12 +368,13 @@ export const fetchSettingsFromGist = async () => {
  */
 export const syncSettingsToGist = async (settings) => {
     const token = settings.githubToken;
-    if (!token) return { ok: false };
+    const gistId = settings.gistId;
+    if (!token || !gistId) return { ok: false };
 
     try {
         // Strip token before saving to Gist for security
         const { githubToken, ...safeSettings } = settings;
-        const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+        const response = await fetch(`https://api.github.com/gists/${gistId}`, {
             method: 'PATCH',
             headers: {
                 'Authorization': `token ${token}`,
@@ -383,6 +396,49 @@ export const syncSettingsToGist = async (settings) => {
 };
 
 /**
+ * Creates a new private Gist for the user and saves local data into it.
+ */
+export const createGist = async (token) => {
+    if (!token) return { ok: false, error: 'Token is required' };
+
+    const records = loadData();
+    const { githubToken, ...safeSettings } = loadSettings();
+
+    try {
+        const response = await fetch('https://api.github.com/gists', {
+            method: 'POST',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                description: 'OT Calculation Backup (Private)',
+                public: false,
+                files: {
+                    'records.json': {
+                        content: JSON.stringify(records, null, 2)
+                    },
+                    'settings.json': {
+                        content: JSON.stringify(safeSettings, null, 2)
+                    }
+                }
+            })
+        });
+
+        if (response.ok) {
+            const gist = await response.json();
+            const newSettings = { ...loadSettings(), gistId: gist.id };
+            saveSettings(newSettings);
+            return { ok: true, gistId: gist.id };
+        }
+        const err = await response.json();
+        return { ok: false, error: err.message || 'Github API Error' };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+};
+
+/**
  * Alias functions for compatibility or future proofing
  */
 export const fetchRecordsFromSheets = fetchRecordsFromGist;
@@ -394,11 +450,13 @@ export const syncSettingsToSheets = syncSettingsToGist;
  * Test connectivity to Gist
  */
 export const testConnection = async (token) => {
+    const s = loadSettings();
+    const gistId = s.gistId || '7ce68f2145a8c8aa4eabe5127f351f71';
     try {
         const headers = {};
         if (token) headers['Authorization'] = `token ${token}`;
 
-        const response = await fetch(GET_GIST_URL(GIST_ID), { headers });
+        const response = await fetch(GET_GIST_URL(gistId), { headers });
         if (response.ok) {
             const gist = await response.json();
             return { ok: true, status: 200, data: gist };

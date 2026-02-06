@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Save, RefreshCw, DollarSign, Calculator, Briefcase, Calendar as CalendarIcon, Activity, Plus, Trash2, Globe } from 'lucide-react'
-import { loadSettings, saveSettings, syncSettingsToGist, testConnection, fetchExchangeRate } from '../lib/storage'
+import { loadSettings, saveSettings, syncSettingsToGist, testConnection, fetchExchangeRate, createGist } from '../lib/storage'
 import { cn } from '../lib/utils'
 import { format } from 'date-fns'
 
@@ -63,6 +63,21 @@ function SettingsPage() {
             ...prev,
             salaryHistory: prev.salaryHistory.map(h => h.id === id ? { ...h, [field]: value } : h)
         }))
+    }
+    const handleCreateGist = async () => {
+        if (!settings.githubToken) {
+            alert('請先輸入 GitHub Token');
+            return;
+        }
+        setIsSaving(true);
+        const res = await createGist(settings.githubToken);
+        if (res.ok) {
+            setSettings(prev => ({ ...prev, gistId: res.gistId }));
+            alert('Gist 建立成功！資料已同步。');
+        } else {
+            alert(`建立失敗: ${res.error}`);
+        }
+        setIsSaving(false);
     }
 
     return (
@@ -217,6 +232,24 @@ function SettingsPage() {
                                 className="neumo-input h-11 text-sm font-bold w-full"
                             />
                         </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Gist ID (雲端儲存庫 ID)</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={settings.gistId || ''}
+                                    onChange={(e) => updateSetting('root', 'gistId', e.target.value)}
+                                    placeholder="輸入現有 Gist ID 或點選右側自動建立"
+                                    className="neumo-input h-11 text-sm font-bold flex-1"
+                                />
+                                <button
+                                    onClick={handleCreateGist}
+                                    className="neumo-button px-4 text-[10px] font-black uppercase text-neumo-brand"
+                                >
+                                    自動建立
+                                </button>
+                            </div>
+                        </div>
                         <button
                             onClick={async () => {
                                 setIsTesting(true);
@@ -233,7 +266,7 @@ function SettingsPage() {
                             <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className={cn("p-3 rounded-2xl text-[9px] font-bold", testResult.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
                                 <div className="flex items-center gap-2 mb-1">
                                     <div className={cn("w-1.5 h-1.5 rounded-full", testResult.ok ? "bg-green-500" : "bg-red-500")} />
-                                    {testResult.ok ? '連線成功！' : `連線失敗: ${testResult.error}`}
+                                    {testResult.ok ? `連線成功！(Gist: ${testResult.data?.id})` : `連線失敗: ${testResult.error}`}
                                 </div>
                             </motion.div>
                         )}
