@@ -215,7 +215,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 label: '當月總收入',
                 data: totalIncomeByMonth,
                 borderColor: 'rgb(253, 224, 71)', // Yellow
-                backgroundColor: 'rgba(253, 224, 71, 0.1)',
+                backgroundColor: 'rgba(253, 224, 71, 0.0)', // Transparent fill
                 fill: false,
                 tension: 0.4,
                 pointRadius: 5,
@@ -226,7 +226,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 label: '底薪',
                 data: baseByMonth,
                 borderColor: 'rgb(56, 189, 248)', // Sky 400
-                backgroundColor: 'rgba(56, 189, 248, 0.8)',
+                backgroundColor: 'rgb(56, 189, 248)', // Solid
                 fill: true,
                 tension: 0.4,
                 pointRadius: 4,
@@ -236,7 +236,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 label: '出差費',
                 data: travelByMonth,
                 borderColor: 'rgb(16, 185, 129)', // Emerald 500
-                backgroundColor: 'rgba(16, 185, 129, 0.95)',
+                backgroundColor: 'rgb(16, 185, 129)', // Solid
                 fill: true,
                 tension: 0.4,
                 pointRadius: 4,
@@ -246,7 +246,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 label: '獎金',
                 data: bonusByMonth,
                 borderColor: 'rgb(245, 158, 11)', // Amber 500
-                backgroundColor: 'rgba(245, 158, 11, 0.95)',
+                backgroundColor: 'rgb(245, 158, 11)', // Solid
                 fill: true,
                 tension: 0.4,
                 pointRadius: 4,
@@ -256,7 +256,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 label: '加班費',
                 data: otPayByMonth,
                 borderColor: 'rgb(255, 69, 0)', // Orange Red
-                backgroundColor: 'rgba(255, 69, 0, 0.95)',
+                backgroundColor: 'rgb(255, 69, 0)', // Solid
                 fill: true,
                 tension: 0.4,
                 pointRadius: 4,
