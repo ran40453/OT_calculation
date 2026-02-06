@@ -67,8 +67,8 @@ function Dashboard() {
     })
 
     const calcMetrics = (records, isMonth = false) => {
-        // Robust trip count: Any day with a travel country is a trip day
-        const tripCount = records.filter(r => r.travelCountry && r.travelCountry.trim() !== '').length
+        // Robust trip count: Any day with a valid travel country string is a trip day
+        const tripCount = records.filter(r => r.travelCountry && typeof r.travelCountry === 'string' && r.travelCountry.trim() !== '').length
 
         const totalOT = records.reduce((sum, r) => {
             let hours = parseFloat(r.otHours) || 0;
