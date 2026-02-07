@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from 'react'
-import { format, startOfMonth, endOfMonth, isWithinInterval, subDays, isSameMonth, parseISO } from 'date-fns'
-import { TrendingUp, Globe, Wallet, Clock, Coffee, Moon, Gift, Eye, EyeOff } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { loadData, loadSettings, fetchRecordsFromGist, calculateCompLeaveUnits, calculateDailySalary, fetchExchangeRate, standardizeCountry, calculateOTHours } from '../lib/storage'
+import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns'
+import { TrendingUp, Globe, Wallet, Clock, Coffee, Moon, Gift, Eye, EyeOff, Briefcase } from 'lucide-react'
+import { motion } from 'framer-motion'
+import {
+    Chart as ChartJS,
+    ArcElement,
+    Tooltip,
+    Legend,
+    PieController
+} from 'chart.js'
+import { Pie } from 'react-chartjs-2'
+import { loadSettings, fetchExchangeRate, standardizeCountry, calculateDailySalary, calculateCompLeaveUnits, calculateOTHours } from '../lib/storage'
 import { cn } from '../lib/utils'
+
+// Register ChartJS components for Pie chart
+ChartJS.register(ArcElement, Tooltip, Legend, PieController)
 
 function Dashboard({ data, isPrivacy, setIsPrivacy }) {
     const [settings, setSettings] = useState(null)
@@ -12,10 +23,8 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
 
     useEffect(() => {
         const init = async () => {
-            console.log('Dashboard: Initializing...');
             const s = loadSettings();
             setSettings(s);
-
             try {
                 const rate = await fetchExchangeRate().catch(() => 32.5);
                 if (rate) setLiveRate(rate);
@@ -28,12 +37,10 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
 
     if (!settings) return null
 
-    // Helper: Mask numbers if privacy mode is on
     const mask = (val) => isPrivacy ? '••••' : val;
 
-    // Filtering Records (Fixed)
+    // Filter for Current Month Only
     const currentMonthInterval = { start: startOfMonth(today), end: endOfMonth(today) }
-    const rollingYearInterval = { start: subDays(today, 365), end: today }
 
     const parse = (d) => {
         if (!d) return new Date(0);
@@ -42,19 +49,14 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
         if (!isNaN(parsed.getTime())) return parsed;
         return new Date(d);
     }
+
     const currentMonthRecords = data.filter(r => {
         const d = parse(r.date);
         return d instanceof Date && !isNaN(d) && isWithinInterval(d, currentMonthInterval);
     })
-    const rollingYearRecords = data.filter(r => {
-        const d = parse(r.date);
-        return d instanceof Date && !isNaN(d) && isWithinInterval(d, rollingYearInterval);
-    })
 
-    const calcMetrics = (records, isMonth = false) => {
-        // Robust trip count: Any day with a valid travel country string is a trip day
-        const tripCount = records.filter(r => r.travelCountry && typeof r.travelCountry === 'string' && r.travelCountry.trim() !== '').length
-
+    // Calculate Monthly Metrics
+    const calcMonthlyMetrics = (records) => {
         const totalOT = records.reduce((sum, r) => {
             let hours = parseFloat(r.otHours) || 0;
             if (hours === 0 && r.endTime) {
@@ -62,79 +64,94 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
             }
             return sum + (isNaN(hours) ? 0 : hours);
         }, 0)
+
         const totalComp = records.reduce((sum, r) => sum + calculateCompLeaveUnits(r), 0)
-        const totalLeave = records.filter(r => r.isLeave).length
+        const totalLeave = records.filter(r => r.isLeave).length // In days
 
-        // Sum of all daily calculated salaries (OT pay + Allowances)
-        const extraPay = records.reduce((sum, r) => {
-            const metrics = calculateDailySalary(r, { ...settings, liveRate });
-            const val = metrics?.extra || 0;
-            return sum + (isNaN(val) ? 0 : val);
-        }, 0)
-
+        // Financials
         const baseMonthly = settings?.salary?.baseMonthly || 50000;
 
-        // Monthly Total = Base + Extra for this month
-        // Annual Total = Base * 12 + Extra for the rolling 365 days
-        const totalSalary = isMonth ? (baseMonthly + extraPay) : (baseMonthly * 12 + extraPay);
+        let otPay = 0;
+        let travelAllowance = 0;
+        let bonus = 0;
 
-        // Allowance recalculation based on per-country rules
-        const allowance = records.reduce((total, r) => {
-            if (!r.travelCountry) return total;
-            const country = standardizeCountry(r.travelCountry);
-            let usd = 50;
-            if (country === 'VN') usd = 40;
-            else if (country === 'IN') usd = 70;
-            else if (country === 'CN') usd = 33;
-            const lineVal = usd * (liveRate || settings.allowance?.exchangeRate || 32.5);
-            return total + (isNaN(lineVal) ? 0 : lineVal);
-        }, 0);
+        records.forEach(r => {
+            const metrics = calculateDailySalary(r, { ...settings, liveRate });
+            otPay += metrics?.otPay || 0;
+            travelAllowance += metrics?.travelAllowance || 0;
+            bonus += (parseFloat(r.bonus) || 0);
+        });
 
-        const bonus = records.reduce((sum, r) => sum + (parseFloat(r.bonus) || 0), 0)
+        const estimatedTotal = baseMonthly + otPay + travelAllowance + bonus;
 
-        return { tripCount, totalOT, totalComp, totalLeave, totalSalary, allowance, bonus }
+        return {
+            baseMonthly,
+            otPay,
+            travelAllowance,
+            bonus,
+            estimatedTotal,
+            totalOT,
+            totalComp,
+            totalLeave
+        }
     }
 
-    const monthStats = calcMetrics(currentMonthRecords, true)
-    const yearStats = calcMetrics(rollingYearRecords, false)
+    const metrics = calcMonthlyMetrics(currentMonthRecords);
 
-    console.log('Dashboard Data Audit:', {
-        allData: data.length,
-        monthRecords: currentMonthRecords.length,
-        yearRecords: rollingYearRecords.length,
-        monthOT: monthStats.totalOT,
-        monthSalary: monthStats.totalSalary,
-        tripCount: monthStats.tripCount
-    });
+    // Pie Chart Data
+    const pieData = {
+        labels: ['底薪', '加班費', '出差津貼', '獎金'],
+        datasets: [
+            {
+                data: [metrics.baseMonthly, metrics.otPay, metrics.travelAllowance, metrics.bonus],
+                backgroundColor: [
+                    'rgba(56, 189, 248, 0.8)', // Sky 400 (Base)
+                    'rgba(255, 69, 0, 0.8)',   // Orange Red (OT)
+                    'rgba(16, 185, 129, 0.8)', // Emerald 500 (Travel)
+                    'rgba(245, 158, 11, 0.8)', // Amber 500 (Bonus)
+                ],
+                borderColor: [
+                    'rgba(56, 189, 248, 1)',
+                    'rgba(255, 69, 0, 1)',
+                    'rgba(16, 185, 129, 1)',
+                    'rgba(245, 158, 11, 1)',
+                ],
+                borderWidth: 1,
+            },
+        ],
+    };
 
-    const StatPair = ({ yearVal, monthVal, unit, color }) => (
-        <div className="flex flex-col gap-2 w-full">
-            <div className="flex justify-between items-baseline px-1">
-                <span className="text-[9px] font-black text-gray-400 uppercase">Year</span>
-                <span className={cn("text-sm font-black tracking-tight", color)}>{mask(yearVal)}{unit}</span>
-            </div>
-            <div className="flex justify-between items-baseline px-1 border-t border-gray-100/50 pt-1">
-                <span className="text-[9px] font-black text-gray-400 uppercase">Month</span>
-                <span className={cn("text-xs font-black tracking-tight opacity-80", color)}>{mask(monthVal)}{unit}</span>
-            </div>
-        </div>
-    )
-
-    const widgets = [
-        { label: '獎金計算', year: `$${Math.round(yearStats.bonus).toLocaleString()}`, month: `$${Math.round(monthStats.bonus).toLocaleString()}`, icon: Gift, color: 'text-amber-500' },
-        { label: '出差天數', year: yearStats.tripCount, month: monthStats.tripCount, unit: 'd', icon: Globe, color: 'text-green-500' },
-        { label: '津貼估計', year: `$${Math.round(yearStats.allowance).toLocaleString()}`, month: `$${Math.round(monthStats.allowance).toLocaleString()}`, icon: Wallet, color: 'text-orange-500' },
-        { label: '薪資估計', year: `$${Math.round(yearStats.totalSalary).toLocaleString()}`, month: `$${Math.round(monthStats.totalSalary).toLocaleString()}`, icon: TrendingUp, color: 'text-purple-500' },
-    ]
+    const pieOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: {
+                    usePointStyle: true,
+                    pointStyle: 'circle',
+                    font: { size: 10, weight: 'bold' },
+                    padding: 15
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: (context) => {
+                        return `${context.label}: ${mask('$' + Math.round(context.raw).toLocaleString())}`;
+                    }
+                }
+            }
+        }
+    };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 pb-32">
             <header className="flex justify-between items-start">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-black tracking-tight flex items-center gap-2">
                         Dashboard <span className="text-sm font-bold bg-neumo-brand/10 text-neumo-brand px-2 py-1 rounded-lg">{format(today, 'MMMM')}</span>
                     </h1>
-                    <p className="text-gray-500 text-xs font-bold tracking-widest uppercase italic">Efficiency & Trends (365D Rolling)</p>
+                    <p className="text-gray-500 text-xs font-bold tracking-widest uppercase italic">Real-time Monthly Overview</p>
                 </div>
                 <button
                     onClick={() => setIsPrivacy(!isPrivacy)}
@@ -144,106 +161,101 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
                 </button>
             </header>
 
-            {/* Top Stat Widgtes */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {widgets.map((w, i) => (
-                    <motion.div
-                        key={w.label}
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="neumo-card p-4 flex flex-col items-center gap-3"
-                    >
-                        <div className={cn("p-2 rounded-xl neumo-pressed", w.color)}>
-                            <w.icon size={18} />
+            {/* 1. Monthly Estimated Salary */}
+            <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="neumo-card p-6 relative overflow-hidden group"
+            >
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <Wallet size={120} />
+                </div>
+                <div className="relative z-10 space-y-4">
+                    <div className="flex items-center gap-2 text-gray-400">
+                        <div className="p-2 rounded-xl neumo-pressed text-purple-500">
+                            <TrendingUp size={20} />
                         </div>
-                        <div className="w-full text-center">
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-100/50 pb-1">{w.label}</p>
-                            {w.single ? (
-                                <p className="text-xl font-black">{w.main}</p>
-                            ) : (
-                                <StatPair yearVal={w.year} monthVal={w.month} unit="" color={w.color} />
-                            )}
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* Accumulation Grid */}
-            <div className="space-y-4">
-                <div className="flex justify-between items-center px-1">
-                    <h3 className="text-lg font-black italic">累積統計庫</h3>
-                    <div className="flex items-center gap-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                        <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-gray-300" /> 年累計</span>
-                        <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-white border border-gray-200" /> 月累計</span>
+                        <h2 className="text-xs font-black uppercase tracking-widest">本月薪資預估 (Estimated)</h2>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-4xl md:text-5xl font-black text-[#202731] tracking-tighter">
+                            {mask('$' + Math.round(metrics.estimatedTotal).toLocaleString())}
+                        </span>
+                        <span className="text-xs font-bold text-gray-400">TWD</span>
+                    </div>
+                    <div className="flex gap-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-sky-400" /> 底薪</span>
+                        <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-orange-500" /> 加班: {mask('$' + Math.round(metrics.otPay).toLocaleString())}</span>
+                        <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> 津貼: {mask('$' + Math.round(metrics.travelAllowance).toLocaleString())}</span>
                     </div>
                 </div>
+            </motion.div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <AccumulationCard
-                        label="加班統計"
-                        yearVal={yearStats.totalOT.toFixed(1)}
-                        monthVal={monthStats.totalOT.toFixed(1)}
-                        unit="h"
-                        icon={Clock}
-                        color="text-blue-500"
-                        mask={mask}
-                    />
-                    <AccumulationCard
-                        label="累計補休"
-                        yearVal={yearStats.totalComp.toFixed(1)}
-                        monthVal={monthStats.totalComp.toFixed(1)}
-                        unit="單"
-                        icon={Coffee}
-                        color="text-indigo-500"
-                        mask={mask}
-                    />
-                    <AccumulationCard
-                        label="累計請假"
-                        yearVal={yearStats.totalLeave}
-                        monthVal={monthStats.totalLeave}
-                        unit="天"
-                        icon={Moon}
-                        color="text-rose-500"
-                        mask={mask}
-                    />
-                </div>
+            {/* 2. Work-Life Balance Board */}
+            <div className="grid grid-cols-2 gap-4">
+                <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="neumo-card p-5 space-y-3"
+                >
+                    <div className="flex justify-between items-start">
+                        <div className="p-2 rounded-xl neumo-pressed text-blue-500 inline-flex">
+                            <Clock size={18} />
+                        </div>
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">累計加班</span>
+                    </div>
+                    <div>
+                        <span className="text-2xl font-black text-[#202731]">{metrics.totalOT.toFixed(1)}</span>
+                        <span className="text-xs font-bold text-gray-400 ml-1">Hours</span>
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="neumo-card p-5 space-y-3"
+                >
+                    <div className="flex justify-between items-start">
+                        <div className="p-2 rounded-xl neumo-pressed text-indigo-500 inline-flex">
+                            <Coffee size={18} />
+                        </div>
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">可用補休 / 請假</span>
+                    </div>
+                    <div className="flex gap-4">
+                        <div>
+                            <span className="text-xl font-black text-[#202731]">{metrics.totalComp}</span>
+                            <span className="text-[9px] font-bold text-gray-400 ml-1">Units</span>
+                            <p className="text-[8px] text-gray-400 font-bold">補休</p>
+                        </div>
+                        <div className="border-l border-gray-100 pl-4">
+                            <span className="text-xl font-black text-rose-500">{metrics.totalLeave}</span>
+                            <span className="text-[9px] font-bold text-gray-400 ml-1">Days</span>
+                            <p className="text-[8px] text-gray-400 font-bold">已請假</p>
+                        </div>
+                    </div>
+                </motion.div>
             </div>
+
+            {/* 3. Income Structure (Pie Chart) */}
+            <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="neumo-card p-6 flex flex-col h-[300px]"
+            >
+                <div className="flex items-center gap-2 mb-4">
+                    <div className="p-2 rounded-xl neumo-pressed text-amber-500">
+                        <Briefcase size={18} />
+                    </div>
+                    <h3 className="text-sm font-black text-[#202731] uppercase tracking-widest">本月收入結構</h3>
+                </div>
+                <div className="flex-1 min-h-0 relative">
+                    <Pie data={pieData} options={pieOptions} />
+                </div>
+            </motion.div>
         </div>
-    )
-}
-
-function AccumulationCard({ label, yearVal, monthVal, unit, icon: Icon, color, mask }) {
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="neumo-card p-6 flex items-center gap-6"
-        >
-            <div className={cn("w-12 h-12 rounded-2xl neumo-pressed flex items-center justify-center flex-shrink-0", color)}>
-                <Icon size={24} />
-            </div>
-
-            <div className="flex-1 space-y-3">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-0.5">
-                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Rolling Year</p>
-                        <div className="flex items-baseline gap-1">
-                            <span className={cn("text-2xl font-black tabular-nums tracking-tighter", color)}>{mask(yearVal)}</span>
-                            <span className="text-[9px] font-black text-gray-400 uppercase">{unit}</span>
-                        </div>
-                    </div>
-                    <div className="space-y-0.5 border-l border-gray-100 pl-4">
-                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">This Month</p>
-                        <div className="flex items-baseline gap-1">
-                            <span className={cn("text-lg font-black tabular-nums tracking-tighter opacity-70", color)}>{mask(monthVal)}</span>
-                            <span className="text-[9px] font-black text-gray-400 uppercase">{unit}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </motion.div>
     )
 }
 
