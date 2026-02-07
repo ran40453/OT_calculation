@@ -4,20 +4,13 @@ import { X, Plus, Calendar, Globe, Palmtree, Moon, Clock, CreditCard, Coffee, Gi
 import { format } from 'date-fns'
 import { cn } from '../lib/utils'
 
-function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
-    const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-    const [country, setCountry] = useState('')
-    const [isHoliday, setIsHoliday] = useState(false)
-    const [isLeave, setIsLeave] = useState(false)
-    const [endTime, setEndTime] = useState('17:30')
-    const [otType, setOtType] = useState('pay')
-    const [isDragging, setIsDragging] = useState(false)
-    const [mode, setMode] = useState('attendance') // 'attendance' or 'bonus'
-    const [bonus, setBonus] = useState('')
-    const [bonusCategory, setBonusCategory] = useState('季獎金')
-    const [bonusName, setBonusName] = useState('')
-    const [showCustomCategory, setShowCustomCategory] = useState(false)
-    const [customCategory, setCustomCategory] = useState('')
+function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
+    const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+    const [isWorkDay, setIsWorkDay] = useState(false)
+    const [isBatchMode, setIsBatchMode] = useState(false)
+    const [showConfirm, setShowConfirm] = useState(false)
+    const [conflictingDates, setConflictingDates] = useState([])
+    const [pendingPayloads, setPendingPayloads] = useState(null)
 
     const bonusCategories = settings?.bonusCategories || ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅']
 
@@ -29,34 +22,93 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
         return Math.max(0, (h2 * 60 + m2 - (h1 * 60 + m1)) / 60);
     })();
 
-    const handleSubmit = () => {
-        const payload = {
-            date: new Date(date),
-            travelCountry: mode === 'attendance' ? country : '',
-            isHoliday: mode === 'attendance' ? isHoliday : false,
-            isLeave: mode === 'attendance' ? isLeave : false,
-            otHours: mode === 'attendance' ? otHours : 0,
-            otType: mode === 'attendance' ? (otHours >= 0.5 ? otType : 'pay') : 'pay',
-            endTime: mode === 'attendance' ? endTime : '',
-            bonus: mode === 'bonus' ? parseFloat(bonus) || 0 : 0,
-            bonusCategory: mode === 'bonus' ? (showCustomCategory ? customCategory : bonusCategory) : '',
-            bonusName: mode === 'bonus' ? bonusName : '',
-            recordType: mode
-        };
+    const generatePayload = (targetDate) => ({
+        date: new Date(targetDate),
+        travelCountry: mode === 'attendance' ? country : '',
+        isHoliday: mode === 'attendance' ? isHoliday : false,
+        isWorkDay: mode === 'attendance' ? isWorkDay : false,
+        isLeave: mode === 'attendance' ? isLeave : false,
+        otHours: mode === 'attendance' ? otHours : 0,
+        otType: mode === 'attendance' ? (otHours >= 0.5 ? otType : 'pay') : 'pay',
+        endTime: mode === 'attendance' ? endTime : '',
+        bonus: mode === 'bonus' ? parseFloat(bonus) || 0 : 0,
+        bonusCategory: mode === 'bonus' ? (showCustomCategory ? customCategory : bonusCategory) : '',
+        bonusName: mode === 'bonus' ? bonusName : '',
+        recordType: mode
+    });
 
-        if (mode === 'bonus' && payload.bonus > 0) {
-            payload.bonusEntries = [{
-                id: `be-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                amount: payload.bonus,
-                category: payload.bonusCategory,
-                name: payload.bonusName,
-                date: payload.date
-            }];
+    const getDatesInRange = (start, end) => {
+        const dates = [];
+        let current = new Date(start);
+        const last = new Date(end);
+        while (current <= last) {
+            dates.push(format(current, 'yyyy-MM-dd'));
+            current.setDate(current.getDate() + 1);
         }
+        return dates;
+    }
 
-        onAdd(payload);
+    const handlePreSubmit = () => {
+        if (!isBatchMode) {
+            const payload = generatePayload(date);
+            handleFinalSubmit([payload]);
+        } else {
+            // Batch Mode Logic
+            const dates = getDatesInRange(date, endDate);
+            if (dates.length === 0) return;
+
+            // Generate all payloads
+            const payloads = dates.map(d => generatePayload(d));
+
+            // Check conflicts
+            // props.records must be passed from App.jsx
+            const existingDates = (props.records || []).map(r => format(new Date(r.date), 'yyyy-MM-dd'));
+            const conflicts = dates.filter(d => existingDates.includes(d));
+
+            if (conflicts.length > 0) {
+                setConflictingDates(conflicts);
+                setPendingPayloads(payloads);
+                setShowConfirm(true);
+            } else {
+                handleFinalSubmit(payloads);
+            }
+        }
+    }
+
+    const handleFinalSubmit = (payloads) => {
+        // Handle bonus entries structure for each payload
+        const finalPayloads = payloads.map(p => {
+            if (mode === 'bonus' && p.bonus > 0) {
+                return {
+                    ...p,
+                    bonusEntries: [{
+                        id: `be-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        amount: p.bonus,
+                        category: p.bonusCategory,
+                        name: p.bonusName,
+                        date: p.date
+                    }]
+                };
+            }
+            return p;
+        });
+
+        // Loop add (App.jsx handles one by one or we updated storage to handle array?)
+        // Storage addOrUpdateRecord handles array now.
+        // App handleUpdateRecord calls addOrUpdateRecord.
+        // So passing array is fine IF App.jsx passes it through.
+        // App.jsx: handleUpdateRecord(updatedRecord) -> addOrUpdateRecord(updatedRecord)
+        // Yes, checking App.jsx code:
+        // const handleUpdateRecord = async (updatedRecord) => { const result = await addOrUpdateRecord(updatedRecord) ... }
+        // So it passes whatever we send.
+
+        onAdd(finalPayloads);
+
+        // Reset and Close
         setBonus('');
         setBonusName('');
+        setPendingPayloads(null);
+        setShowConfirm(false);
         onClose();
     }
 
@@ -106,10 +158,38 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
                     exit={{ scale: 0.9, opacity: 0, y: 20 }}
                     className="relative w-full max-w-sm neumo-card p-6 overflow-hidden"
                 >
+                    {/* Confirm Overlay */}
+                    {showConfirm && (
+                        <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4">
+                            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center text-orange-500 mb-2">
+                                <Clock size={32} />
+                            </div>
+                            <h4 className="text-lg font-black text-[#202731]">確認覆蓋資料？</h4>
+                            <p className="text-xs text-gray-500 font-bold">
+                                發現 {conflictingDates.length} 筆重複資料（{conflictingDates[0]}...）。<br />
+                                是否確定要覆蓋這些日期的紀錄？
+                            </p>
+                            <div className="flex gap-3 w-full pt-4">
+                                <button
+                                    onClick={() => setShowConfirm(false)}
+                                    className="flex-1 h-12 rounded-xl neumo-raised text-gray-500 font-black text-xs"
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    onClick={() => handleFinalSubmit(pendingPayloads)}
+                                    className="flex-1 h-12 rounded-xl neumo-button text-red-500 font-black text-xs"
+                                >
+                                    確認覆蓋
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-black italic uppercase text-neumo-brand flex items-center gap-2">
                             <Plus size={20} strokeWidth={3} />
-                            {mode === 'attendance' ? '新增紀錄' : '新增獎金'}
+                            {mode === 'attendance' ? (isBatchMode ? '批量新增' : '新增紀錄') : '新增獎金'}
                         </h3>
                         <button onClick={onClose} className="neumo-button p-2 text-gray-400">
                             <X size={18} />
@@ -142,14 +222,27 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
                         {/* Date Input */}
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <Calendar size={12} /> 日期
+                                <Calendar size={12} /> {isBatchMode ? '日期範圍' : '日期'}
                             </label>
-                            <input
-                                type="date"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                className="neumo-input w-full h-12 font-bold px-4"
-                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="date"
+                                    value={date}
+                                    onChange={(e) => setDate(e.target.value)}
+                                    className="neumo-input w-full h-12 font-bold px-4 flex-1"
+                                />
+                                {isBatchMode && (
+                                    <>
+                                        <span className="flex items-center text-gray-400 font-black">to</span>
+                                        <input
+                                            type="date"
+                                            value={endDate}
+                                            onChange={(e) => setEndDate(e.target.value)}
+                                            className="neumo-input w-full h-12 font-bold px-4 flex-1"
+                                        />
+                                    </>
+                                )}
+                            </div>
                         </div>
 
                         {/* Attendance Mode Fields */}
@@ -225,11 +318,20 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
                                 )}
 
                                 {/* Status Toggles */}
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-3 gap-3">
+                                    <button
+                                        onClick={() => setIsWorkDay(!isWorkDay)}
+                                        className={cn(
+                                            "h-12 rounded-2xl flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-all",
+                                            isWorkDay ? "neumo-pressed text-blue-600" : "neumo-raised text-gray-400"
+                                        )}
+                                    >
+                                        <Check size={14} /> 平日
+                                    </button>
                                     <button
                                         onClick={() => setIsHoliday(!isHoliday)}
                                         className={cn(
-                                            "h-12 rounded-2xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all",
+                                            "h-12 rounded-2xl flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-all",
                                             isHoliday ? "neumo-pressed text-orange-500" : "neumo-raised text-gray-400"
                                         )}
                                     >
@@ -238,7 +340,7 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
                                     <button
                                         onClick={() => setIsLeave(!isLeave)}
                                         className={cn(
-                                            "h-12 rounded-2xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all",
+                                            "h-12 rounded-2xl flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-all",
                                             isLeave ? "neumo-pressed text-indigo-500" : "neumo-raised text-gray-400"
                                         )}
                                     >
@@ -324,16 +426,31 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings }) {
                             </div>
                         )}
 
-                        <button
-                            onClick={handleSubmit}
-                            className={cn(
-                                "neumo-button w-full h-14 mt-4 font-black text-sm flex items-center justify-center gap-2",
-                                mode === 'bonus' ? "text-amber-500" : "text-neumo-brand"
+                        <div className="flex gap-3 mt-4">
+                            <button
+                                onClick={handlePreSubmit}
+                                className={cn(
+                                    "neumo-button flex-1 h-14 font-black text-sm flex items-center justify-center gap-2",
+                                    mode === 'bonus' ? "text-amber-500" : "text-neumo-brand"
+                                )}
+                            >
+                                <Plus size={20} strokeWidth={3} />
+                                {isBatchMode ? '確認批量新增' : (mode === 'attendance' ? '新增紀錄' : '新增獎金')}
+                            </button>
+
+                            {mode === 'attendance' && (
+                                <button
+                                    onClick={() => setIsBatchMode(!isBatchMode)}
+                                    className={cn(
+                                        "neumo-button w-14 h-14 flex items-center justify-center transition-all",
+                                        isBatchMode ? "text-white bg-neumo-brand shadow-inner rounded-xl" : "text-gray-400"
+                                    )}
+                                    title="批量新增模式"
+                                >
+                                    {isBatchMode ? <Calendar size={20} strokeWidth={3} /> : <div className="flex flex-col items-center leading-none text-[8px] font-black gap-0.5"><Plus size={14} /><span className="scale-75">BATCH</span></div>}
+                                </button>
                             )}
-                        >
-                            <Plus size={20} strokeWidth={3} />
-                            {mode === 'attendance' ? '新增紀錄' : '新增獎金'}
-                        </button>
+                        </div>
                     </div>
                 </motion.div>
             </div>

@@ -9,6 +9,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
     const [endTime, setEndTime] = useState(record?.endTime || '17:30')
     const [travelCountry, setTravelCountry] = useState(record?.travelCountry || '')
     const [isHoliday, setIsHoliday] = useState(record?.isHoliday || false)
+    const [isWorkDay, setIsWorkDay] = useState(record?.isWorkDay || false)
     const [isLeave, setIsLeave] = useState(record?.isLeave || false)
     const [otType, setOtType] = useState(record?.otType || 'pay')
     const [isDragging, setIsDragging] = useState(false)
@@ -85,12 +86,13 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
         if (finalTravel === '越南' || finalTravel === 'VIETNAM') finalTravel = 'VN';
 
         const finalHoliday = overrides.isHoliday !== undefined ? overrides.isHoliday : isHoliday;
+        const finalWorkDay = overrides.isWorkDay !== undefined ? overrides.isWorkDay : isWorkDay;
         const finalLeave = overrides.isLeave !== undefined ? overrides.isLeave : isLeave;
         const finalType = overrides.otType !== undefined ? overrides.otType : otType;
 
         let otHours = 0;
         const d = getDay(day);
-        const isRestDay = d === 0 || d === 6 || finalHoliday;
+        const isRestDay = (d === 0 || d === 6 || finalHoliday) && !finalWorkDay;
 
         if (isRestDay) {
             // Full day OT: (End - Start) - Break
@@ -110,6 +112,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
             otHours: otHours,
             travelCountry: finalTravel,
             isHoliday: finalHoliday,
+            isWorkDay: finalWorkDay, // Persist this new field
             isLeave: finalLeave,
             otType: finalType
         })
@@ -121,7 +124,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
     let calculatedOT = 0;
     if (settings) {
         const d = getDay(day);
-        const isRestDay = d === 0 || d === 6 || isHoliday;
+        const isRestDay = (d === 0 || d === 6 || isHoliday) && !isWorkDay;
         // Only calculate specific OT if we have a real record OR if we are in an editing state where endTime might be meaningful?
         // Actually, if record is missing, record?.endTime is undefined.
         // We set state `endTime` to '17:30' default.
@@ -146,7 +149,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
     // Prefer stored OT for initial display, but if user edits endTime, it will recalc via syncUpdate
     // However, for rendering the *current* state of the card (which might be historical), trust record.otHours if valid
     const otHours = (!isNaN(storedOT) && storedOT > 0) ? storedOT : (isNaN(calculatedOT) ? 0 : calculatedOT);
-    const salaryMetrics = settings ? calculateDailySalary({ ...record, endTime, otHours, isHoliday, isLeave, otType }, settings) : { total: 0 };
+    const salaryMetrics = settings ? calculateDailySalary({ ...record, endTime, otHours, isHoliday, isWorkDay, isLeave, otType }, settings) : { total: 0 };
     const dailySalary = salaryMetrics?.total || 0;
     const compUnits = calculateCompLeaveUnits({ otHours, otType });
 
@@ -184,22 +187,28 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
             {/* The CalendarOverlay handles closing via backdrop. */}
 
             {/* Status Grid */}
-            <div className="flex gap-2">
+            <div className="grid grid-cols-4 gap-2">
+                <button
+                    onClick={() => setIsWorkDay(!isWorkDay)}
+                    className={cn("py-3 rounded-2xl flex items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", isWorkDay ? "neumo-pressed text-blue-600" : "neumo-raised text-gray-400")}
+                >
+                    <Check size={14} /> 平日
+                </button>
                 <button
                     onClick={() => setIsHoliday(!isHoliday)}
-                    className={cn("flex-1 py-3 rounded-2xl flex items-center justify-center gap-2 text-[8px] font-bold uppercase transition-all", isHoliday ? "neumo-pressed text-orange-500" : "neumo-raised text-gray-400")}
+                    className={cn("py-3 rounded-2xl flex items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", isHoliday ? "neumo-pressed text-orange-500" : "neumo-raised text-gray-400")}
                 >
                     <Palmtree size={14} /> 假日
                 </button>
                 <button
                     onClick={() => setIsLeave(!isLeave)}
-                    className={cn("flex-1 py-3 rounded-2xl flex items-center justify-center gap-2 text-[8px] font-bold uppercase transition-all", isLeave ? "neumo-pressed text-indigo-500" : "neumo-raised text-gray-400")}
+                    className={cn("py-3 rounded-2xl flex items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", isLeave ? "neumo-pressed text-indigo-500" : "neumo-raised text-gray-400")}
                 >
                     <Moon size={14} /> 請假
                 </button>
                 <button
                     onClick={() => { const seq = ['', 'VN', 'IN', 'CN']; setTravelCountry(seq[(seq.indexOf(travelCountry) + 1) % seq.length]); }}
-                    className={cn("flex-1 py-3 rounded-2xl flex items-center justify-center gap-2 text-[8px] font-bold uppercase transition-all", travelCountry ? "neumo-pressed text-green-600" : "neumo-raised text-gray-400")}
+                    className={cn("py-3 rounded-2xl flex items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", travelCountry ? "neumo-pressed text-green-600" : "neumo-raised text-gray-400")}
                 >
                     <MapPin size={14} /> {travelCountry || '出差'}
                 </button>

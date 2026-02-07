@@ -241,29 +241,42 @@ export const calculateDailySalary = (record, settings) => {
         const recordDate = new Date(record.date);
         const dayOfWeek = isNaN(recordDate.getTime()) ? -1 : getDay(recordDate);
 
-        if (record.isHoliday) {
-            if (otHours <= 8) {
-                otPay = otHours * hourlyRate * 2.0;
-            } else {
-                const first8 = 8 * hourlyRate * 2.0;
-                const extra = otHours - 8;
-                let extraPay = 0;
-                if (extra <= 2) {
-                    extraPay = extra * hourlyRate * 1.34;
+        // Determine if it's a rest day (Saturday/Sunday or Holiday)
+        // BUT if isWorkDay is true, treat as normal weekday
+        const isRestDay = (dayOfWeek === 0 || dayOfWeek === 6 || record.isRestDay || record.isHoliday) && !record.isWorkDay;
+
+        if (isRestDay) {
+            if (record.isHoliday && !record.isWorkDay) {
+                // Holiday Logic (2.0x) - Kept separate if Holiday has specific rules differently from Sat/Sun
+                // User said "Saturday... 1.34/1.67/2.67", which matches the generic Rest Day logic below.
+                // But code had specific Holiday block. Let's assume isWorkDay overrides even Holiday status?
+                // "If checked... treat as weekday". Yes.
+                // So if isWorkDay is true, we skip this entire block and go to 'else'.
+                if (otHours <= 8) {
+                    otPay = otHours * hourlyRate * 2.0;
                 } else {
-                    extraPay = (2 * hourlyRate * 1.34) + ((extra - 2) * hourlyRate * 1.67);
+                    const first8 = 8 * hourlyRate * 2.0;
+                    const extra = otHours - 8;
+                    let extraPay = 0;
+                    if (extra <= 2) {
+                        extraPay = extra * hourlyRate * 1.34;
+                    } else {
+                        extraPay = (2 * hourlyRate * 1.34) + ((extra - 2) * hourlyRate * 1.67);
+                    }
+                    otPay = first8 + extraPay;
                 }
-                otPay = first8 + extraPay;
-            }
-        } else if (dayOfWeek === 0 || dayOfWeek === 6 || record.isRestDay) {
-            if (otHours <= 2) {
-                otPay = otHours * hourlyRate * 1.34;
-            } else if (otHours <= 8) {
-                otPay = (2 * hourlyRate * 1.34) + ((otHours - 2) * hourlyRate * 1.67);
             } else {
-                otPay = (2 * hourlyRate * 1.34) + (6 * hourlyRate * 1.67) + ((otHours - 8) * hourlyRate * 2.67);
+                // Rest Day Logic (Sat/Sun)
+                if (otHours <= 2) {
+                    otPay = otHours * hourlyRate * 1.34;
+                } else if (otHours <= 8) {
+                    otPay = (2 * hourlyRate * 1.34) + ((otHours - 2) * hourlyRate * 1.67);
+                } else {
+                    otPay = (2 * hourlyRate * 1.34) + (6 * hourlyRate * 1.67) + ((otHours - 8) * hourlyRate * 2.67);
+                }
             }
         } else {
+            // Normal Weekday Logic (or isWorkDay = true)
             if (otHours <= 2) {
                 otPay = otHours * hourlyRate * 1.34;
             } else {
@@ -274,7 +287,14 @@ export const calculateDailySalary = (record, settings) => {
 
     const recordDate = new Date(record.date);
     const dayOfWeek = isNaN(recordDate.getTime()) ? -1 : getDay(recordDate);
-    const isSpecialDay = record.isHoliday || dayOfWeek === 0 || dayOfWeek === 6;
+    // Adjusted isSpecialDay for base pay calc? 
+    // Usually base pay is monthly, so daily salary is just reference. 
+    // If it's a holiday/weekend, baseDayPay might be 0 additional?
+    // Current logic: isSpecialDay = holiday or sat/sun.
+    // If isWorkDay is true on a Saturday, technically they are working, so maybe baseDayPay should exist?
+    // But they are already getting Paid Monthly.
+    // Usually "Makeup Day" means it's treated like a Monday.
+    const isSpecialDay = (record.isHoliday || dayOfWeek === 0 || dayOfWeek === 6) && !record.isWorkDay;
     const baseDayPay = isSpecialDay ? 0 : daySalary;
 
     let travelAllowance = 0;
@@ -311,6 +331,85 @@ export const calculateDailySalary = (record, settings) => {
  */
 const recordsToGistFormat = (records) => {
     return JSON.stringify(records, null, 2);
+};
+
+/**
+ * Add or update a record in the local storage and sync to Gist.
+ * Can handle a single record or an array of records.
+ */
+export const addOrUpdateRecord = async (input) => {
+    const data = loadData();
+    let newData = [...data];
+
+    // Normalize input to array
+    const recordsToProcess = Array.isArray(input) ? input : [input];
+    let updatedBonusCategories = false;
+
+    for (const record of recordsToProcess) {
+        const dateStr = format(new Date(record.date), 'yyyy-MM-dd');
+        const index = newData.findIndex(r => format(new Date(r.date), 'yyyy-MM-dd') === dateStr);
+
+        if (index >= 0) {
+            const existing = newData[index];
+
+            if (record.recordType === 'bonus') {
+                const newBonus = (parseFloat(existing.bonus) || 0) + (parseFloat(record.bonus) || 0);
+                const newEntries = [...(existing.bonusEntries || [])];
+                if (record.bonus > 0) {
+                    newEntries.push({
+                        id: `be-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        amount: record.bonus,
+                        category: record.bonusCategory,
+                        name: record.bonusName,
+                        date: record.date
+                    });
+                }
+                newData[index] = {
+                    ...existing,
+                    bonus: newBonus,
+                    bonusEntries: newEntries
+                };
+            } else {
+                newData[index] = {
+                    ...record,
+                    bonus: parseFloat(existing.bonus) || 0,
+                    bonusEntries: existing.bonusEntries || [],
+                    bonusCategory: existing.bonusCategory || '',
+                    bonusName: existing.bonusName || ''
+                };
+            }
+        } else {
+            newData.push(record);
+        }
+
+        // Check bonus category for settings update
+        if (record.recordType === 'bonus' && record.bonusCategory) {
+            updatedBonusCategories = true;
+        }
+    }
+
+    // Auto-save new bonus categories to settings (Batch optimized)
+    if (updatedBonusCategories) {
+        const settings = loadSettings();
+        const currentCats = settings.bonusCategories || ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅'];
+        let changed = false;
+        recordsToProcess.forEach(r => {
+            if (r.recordType === 'bonus' && r.bonusCategory && !currentCats.includes(r.bonusCategory)) {
+                currentCats.push(r.bonusCategory);
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            settings.bonusCategories = currentCats;
+            saveSettings(settings);
+            syncSettingsToGist(settings);
+        }
+    }
+
+    saveData(newData);
+    const syncResult = await syncRecordsToSheets(newData);
+    return { records: newData, sync: syncResult };
 };
 
 /**
@@ -596,62 +695,7 @@ export const saveSettings = (settings) => {
     }
 };
 
-export const addOrUpdateRecord = async (record) => {
-    const data = loadData();
-    const dateStr = format(new Date(record.date), 'yyyy-MM-dd');
-    const index = data.findIndex(r => format(new Date(r.date), 'yyyy-MM-dd') === dateStr);
 
-    let newData;
-    if (index >= 0) {
-        const existing = data[index];
-        newData = [...data];
-
-        if (record.recordType === 'bonus') {
-            const newBonus = (parseFloat(existing.bonus) || 0) + (parseFloat(record.bonus) || 0);
-            const newEntries = [...(existing.bonusEntries || [])];
-            if (record.bonus > 0) {
-                newEntries.push({
-                    id: `be-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    amount: record.bonus,
-                    category: record.bonusCategory,
-                    name: record.bonusName,
-                    date: record.date
-                });
-            }
-            newData[index] = {
-                ...existing,
-                bonus: newBonus,
-                bonusEntries: newEntries
-            };
-        } else {
-            newData[index] = {
-                ...record,
-                bonus: parseFloat(existing.bonus) || 0,
-                bonusEntries: existing.bonusEntries || [],
-                bonusCategory: existing.bonusCategory || '',
-                bonusName: existing.bonusName || ''
-            };
-        }
-    } else {
-        newData = [...data, record];
-    }
-
-    // Auto-save new bonus categories to settings
-    if (record.recordType === 'bonus' && record.bonusCategory) {
-        const settings = loadSettings();
-        const currentCats = settings.bonusCategories || ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅'];
-        if (!currentCats.includes(record.bonusCategory)) {
-            settings.bonusCategories = [...currentCats, record.bonusCategory];
-            saveSettings(settings);
-            syncSettingsToGist(settings); // Fire and forget
-        }
-    }
-
-    saveData(newData);
-
-    const syncResult = await syncRecordsToSheets(newData);
-    return { records: newData, sync: syncResult };
-};
 
 export const deleteRecord = (date) => {
     const data = loadData();

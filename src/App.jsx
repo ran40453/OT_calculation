@@ -94,7 +94,7 @@ function App() {
 
             {toast && (
                 <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-4 py-3 rounded-2xl shadow-xl z-50 text-xs font-black transition-all duration-300 flex items-center gap-2 ${toast.type === 'error' ? 'bg-red-500 text-white' :
-                        toast.type === 'warning' ? 'bg-orange-400 text-white' : 'bg-green-500 text-white'
+                    toast.type === 'warning' ? 'bg-orange-400 text-white' : 'bg-green-500 text-white'
                     }`}>
                     <span>{toast.message}</span>
                 </div>
@@ -112,6 +112,7 @@ function App() {
                 onClose={() => setIsModalOpen(false)}
                 onAdd={handleUpdateRecord}
                 settings={settings}
+                records={records}
             />
         </div>
     )
