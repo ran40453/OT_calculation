@@ -572,7 +572,15 @@ export const loadSettings = () => {
         if (!settings) return defaultSettings;
         const parsed = JSON.parse(settings);
         // console.log('Storage: Loaded settings:', { ...parsed, githubToken: parsed.githubToken ? '***' : 'missing' });
-        return { ...defaultSettings, ...parsed };
+
+        // Deep merge for specific sections to ensure new defaults (like standardStartTime) apply to existing users
+        return {
+            ...defaultSettings,
+            ...parsed,
+            allowance: { ...defaultSettings.allowance, ...(parsed.allowance || {}) },
+            salary: { ...defaultSettings.salary, ...(parsed.salary || {}) },
+            rules: { ...defaultSettings.rules, ...(parsed.rules || {}) }
+        };
     } catch (e) {
         console.error('Storage: Failed to load settings', e);
         return defaultSettings;
