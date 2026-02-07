@@ -280,8 +280,14 @@ function SettingsPage({ isPrivacy }) {
                             <div className="flex justify-between items-center mb-1.5 px-1">
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">加班起算時間 (Standard End Time)</label>
                             </div>
-                            <div className="neumo-pressed h-10 flex items-center px-4 text-[10px] font-black text-gray-400 rounded-xl bg-gray-50/50 italic">
-                                預設固定 17:30 (下班後 0.5H 起算)
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="time"
+                                    value={settings.rules?.standardEndTime || "17:30"}
+                                    onChange={(e) => updateSetting('rules', 'standardEndTime', e.target.value)}
+                                    className="neumo-pressed h-10 px-4 text-xs font-black text-[#202731] rounded-xl bg-gray-50/50 focus:outline-none flex-1"
+                                />
+                                <span className="text-[9px] font-bold text-gray-400 italic whitespace-nowrap">* 下班後 0.5H 起算</span>
                             </div>
                         </div>
                     </div>

@@ -31,6 +31,11 @@ function CalendarPage({ data, onUpdate, isPrivacy }) {
         })
     }
 
+    // Debugging: Log data length updates
+    useEffect(() => {
+        console.log('CalendarPage Data Updated:', data.length, 'records');
+    }, [data]);
+
     const handleUpdateRecord = (updatedRecord) => {
         onUpdate(updatedRecord)
     }
@@ -52,35 +57,38 @@ function CalendarPage({ data, onUpdate, isPrivacy }) {
         const dayIndex = days.findIndex(d => isSameDay(d, day));
         if (dayIndex === -1) return null;
 
-        const row = Math.floor(dayIndex / 7);
-        const col = dayIndex % 7;
+        // Responsive Grid Config
+        const isMobile = window.innerWidth < 768; // Tailwind md breakpoint
+        const cols = 7;
+        const row = Math.floor(dayIndex / cols);
+        const col = dayIndex % cols;
+
+        // Overlay Dimensions
+        const overlayWidth = isMobile ? 3 : 2; // Spans 3 cols on mobile, 2 on desktop
+        const overlayHeight = isMobile ? 4 : 3; // Spans 4 rows on mobile, 3 on desktop
 
         // Vertical Logic: Cover the clicked cell if possible
-        // Target is to start AT the clicked row: targetStartRow = row
-        // But if we are near the bottom (totalRows - 3 or less remaining), we must shift up.
-        // So targetStartRow = Math.min(row, totalRows - 3)
-        // Ensure non-negative index.
-        let targetStartRow = Math.max(0, Math.min(row, totalRows - 3));
+        let targetStartRow = Math.max(0, Math.min(row, totalRows - overlayHeight));
 
-        // Horizontal Logic: Expands Right [Col, Col+1] unless last column
+        // Horizontal Logic: 
+        // Default: Expand Right [Col, ... , Col + width - 1]
+        // Boundary Check: If too close to right edge, shift left
         let targetStartCol = col;
-        if (col === 6) { // Last column (G)
-            targetStartCol = 5; // Shift left to [5,6] to cover 6
+        if (col + overlayWidth > cols) {
+            targetStartCol = cols - overlayWidth;
         }
 
         // Is clicked cell inside the block?
-        // Body Block covers 3 rows: [targetStartRow, targetStartRow + 2]
-        // Body Block covers 2 cols: [targetStartCol, targetStartCol + 1]
-        // With this logic, unless row > totalRows - 3 (bottom edge case), row IS targetStartRow.
-        // So it will be inside.
-        const isRowInside = row >= targetStartRow && row <= targetStartRow + 2;
-        const isColInside = col >= targetStartCol && col <= targetStartCol + 1;
+        const isRowInside = row >= targetStartRow && row < targetStartRow + overlayHeight;
+        const isColInside = col >= targetStartCol && col < targetStartCol + overlayWidth;
         const isInside = isRowInside && isColInside;
 
         return {
             row, col,
             targetStartRow,
             targetStartCol,
+            overlayWidth,
+            overlayHeight,
             isInside
         };
     }
@@ -170,13 +178,13 @@ function CalendarPage({ data, onUpdate, isPrivacy }) {
 }
 
 function CalendarOverlay({ day, record, geometry, onUpdate, onClose, isPrivacy, monthStart }) {
-    const { row, col, targetStartRow, targetStartCol, isInside } = geometry;
+    const { row, col, targetStartRow, targetStartCol, overlayWidth, overlayHeight, isInside } = geometry;
 
     // CSS Grid Positions (1-based)
     // Using absolute positioning to let it float over the grid without affecting flow
     const blockStyle = {
-        gridColumn: `${targetStartCol + 1} / span 2`,
-        gridRow: `${targetStartRow + 1} / span 3`,
+        gridColumn: `${targetStartCol + 1} / span ${overlayWidth}`,
+        gridRow: `${targetStartRow + 1} / span ${overlayHeight}`,
         position: 'absolute',
         width: '100%',
         height: '100%',
@@ -196,9 +204,10 @@ function CalendarOverlay({ day, record, geometry, onUpdate, onClose, isPrivacy, 
     // Stick Direction relative to Body
     let stickDir = null;
     if (row < targetStartRow) stickDir = 'top';
-    else if (row >= targetStartRow + 3) stickDir = 'bottom';
+    else if (row >= targetStartRow + overlayHeight) stickDir = 'bottom';
 
     // Which column of the Body does the Tab attach to?
+    // If col is reasonably within the start/end of the block
     const attachCol = (col === targetStartCol) ? 'left' : 'right';
 
     return (
