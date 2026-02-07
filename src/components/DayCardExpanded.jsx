@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { format } from 'date-fns'
+import { format, getDay } from 'date-fns' // Added getDay
 import { motion } from 'framer-motion'
 import { MapPin, Clock, Check, Palmtree, Moon, DollarSign, Coffee, X } from 'lucide-react'
 import { cn } from '../lib/utils'
-import { loadSettings, calculateOTHours, calculateDailySalary, calculateCompLeaveUnits, fetchExchangeRate, standardizeCountry } from '../lib/storage'
+import { loadSettings, calculateOTHours, calculateDuration, calculateDailySalary, calculateCompLeaveUnits, fetchExchangeRate, standardizeCountry } from '../lib/storage' // Added calculateDuration
 
 function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hideHeader = false }) {
     const [endTime, setEndTime] = useState(record?.endTime || '17:30')
@@ -88,7 +88,19 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
         const finalLeave = overrides.isLeave !== undefined ? overrides.isLeave : isLeave;
         const finalType = overrides.otType !== undefined ? overrides.otType : otType;
 
-        const otHours = calculateOTHours(finalEndTime, settings?.rules?.standardEndTime);
+        let otHours = 0;
+        const d = getDay(day);
+        const isRestDay = d === 0 || d === 6 || finalHoliday;
+
+        if (isRestDay) {
+            // Full day OT: (End - Start) - Break
+            const start = settings?.rules?.standardStartTime || "08:30";
+            const breakTime = settings?.rules?.lunchBreak || 1.5;
+            otHours = calculateDuration(start, finalEndTime, breakTime);
+        } else {
+            // Weekday OT: End - Standard End
+            otHours = calculateOTHours(finalEndTime, settings?.rules?.standardEndTime);
+        }
 
         onUpdate({
             date: day,
@@ -101,8 +113,22 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
         })
     }
 
+    // Calculation for Render
     const storedOT = parseFloat(record?.otHours);
-    const calculatedOT = settings ? calculateOTHours(endTime, settings.rules?.standardEndTime) : 0;
+
+    let calculatedOT = 0;
+    if (settings) {
+        const d = getDay(day);
+        const isRestDay = d === 0 || d === 6 || isHoliday;
+        if (isRestDay) {
+            const start = settings.rules?.standardStartTime || "08:30";
+            const breakTime = settings.rules?.lunchBreak || 1.5;
+            calculatedOT = calculateDuration(start, endTime, breakTime);
+        } else {
+            calculatedOT = calculateOTHours(endTime, settings.rules?.standardEndTime);
+        }
+    }
+
     // Prefer stored OT for initial display, but if user edits endTime, it will recalc via syncUpdate
     // However, for rendering the *current* state of the card (which might be historical), trust record.otHours if valid
     const otHours = (!isNaN(storedOT) && storedOT > 0) ? storedOT : (isNaN(calculatedOT) ? 0 : calculatedOT);

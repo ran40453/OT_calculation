@@ -276,18 +276,43 @@ function SettingsPage({ isPrivacy }) {
                         </div>
 
                         {/* Standard Time Section */}
-                        <div className="pt-2">
-                            <div className="flex justify-between items-center mb-1.5 px-1">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">加班起算時間 (Standard End Time)</label>
+                        <div className="pt-2 space-y-4">
+                            {/* Start Time & Lunch Break Row */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">上班時間 (Start)</label>
+                                    <input
+                                        type="time"
+                                        value={settings.rules?.standardStartTime || "08:30"}
+                                        onChange={(e) => updateSetting('rules', 'standardStartTime', e.target.value)}
+                                        className="neumo-pressed h-10 px-4 text-xs font-black text-[#202731] rounded-xl bg-gray-50/50 focus:outline-none w-full"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">午休時數 (Break)</label>
+                                    <input
+                                        type="number"
+                                        step="0.5"
+                                        value={settings.rules?.lunchBreak || 1.5}
+                                        onChange={(e) => updateSetting('rules', 'lunchBreak', parseFloat(e.target.value))}
+                                        className="neumo-pressed h-10 px-4 text-xs font-black text-[#202731] rounded-xl bg-gray-50/50 focus:outline-none w-full"
+                                    />
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="time"
-                                    value={settings.rules?.standardEndTime || "17:30"}
-                                    onChange={(e) => updateSetting('rules', 'standardEndTime', e.target.value)}
-                                    className="neumo-pressed h-10 px-4 text-xs font-black text-[#202731] rounded-xl bg-gray-50/50 focus:outline-none flex-1"
-                                />
-                                <span className="text-[9px] font-bold text-gray-400 italic whitespace-nowrap">* 下班後 0.5H 起算</span>
+
+                            <div>
+                                <div className="flex justify-between items-center mb-1.5 px-1">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">加班起算時間 (Standard End Time)</label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="time"
+                                        value={settings.rules?.standardEndTime || "17:30"}
+                                        onChange={(e) => updateSetting('rules', 'standardEndTime', e.target.value)}
+                                        className="neumo-pressed h-10 px-4 text-xs font-black text-[#202731] rounded-xl bg-gray-50/50 focus:outline-none flex-1"
+                                    />
+                                    <span className="text-[9px] font-bold text-gray-400 italic whitespace-nowrap">* 下班後 0.5H 起算</span>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -3,7 +3,7 @@ import { format, isToday, getDay, isAfter, startOfDay } from 'date-fns'
 import { motion } from 'framer-motion'
 import { Palmtree, Moon, DollarSign, Coffee } from 'lucide-react'
 import { cn } from '../lib/utils'
-import { loadSettings, calculateOTHours, calculateDailySalary, fetchExchangeRate, standardizeCountry } from '../lib/storage'
+import { loadSettings, calculateOTHours, calculateDuration, calculateDailySalary, fetchExchangeRate, standardizeCountry } from '../lib/storage'
 
 function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
     const [settings, setSettings] = useState(null)
@@ -17,7 +17,9 @@ function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
         init();
     }, []);
 
-    const isSunday = getDay(day) === 0;
+    const dayOfWeek = getDay(day);
+    const isSunday = dayOfWeek === 0;
+    const isSaturday = dayOfWeek === 6;
 
     // Derived values for display
     const endTime = record?.endTime || '17:30';
@@ -27,7 +29,19 @@ function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
     const otType = record?.otType || 'pay';
 
     const storedOT = parseFloat(record?.otHours);
-    const calculatedOT = settings ? calculateOTHours(endTime, settings.rules?.standardEndTime) : 0;
+
+    let calculatedOT = 0;
+    if (settings) {
+        const isRestDay = isSunday || isSaturday || isHoliday;
+        if (isRestDay) {
+            const start = settings.rules?.standardStartTime || "08:30";
+            const breakTime = settings.rules?.lunchBreak || 1.5;
+            calculatedOT = calculateDuration(start, endTime, breakTime);
+        } else {
+            calculatedOT = calculateOTHours(endTime, settings.rules?.standardEndTime);
+        }
+    }
+
     const otHours = (!isNaN(storedOT) && storedOT > 0) ? storedOT : (isNaN(calculatedOT) ? 0 : calculatedOT);
     const salaryMetrics = settings ? calculateDailySalary({ ...record, endTime, otHours, isHoliday, isLeave, otType }, settings) : { total: 0 };
     const dailySalary = salaryMetrics?.total || 0;

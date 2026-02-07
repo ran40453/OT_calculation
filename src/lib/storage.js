@@ -23,6 +23,8 @@ const defaultSettings = {
         ot2: 1.67,
         ot3: 2.0,
         standardEndTime: "18:00", // Default off-work time
+        standardStartTime: "08:30", // Default start time
+        lunchBreak: 1.5, // Default break in hours
     },
     bonusCategories: ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅']
 };
@@ -38,6 +40,45 @@ export const standardizeCountry = (c) => {
     if (upper === 'IN' || upper === '印度' || upper === 'INDIA') return 'IN';
     if (upper === 'CN' || upper === '大陸' || upper === 'CHINA') return 'CN';
     return upper;
+};
+
+/**
+ * Calculates duration between two times in hours, minus a break
+ */
+export const calculateDuration = (startTimeStr, endTimeStr, breakHours = 1.5) => {
+    if (!startTimeStr || !endTimeStr) return 0;
+
+    const extractTime = (str) => {
+        if (typeof str !== 'string') return null;
+        const timeMatch = str.match(/(\d{1,2}:\d{2})/);
+        if (timeMatch) return timeMatch[1];
+        if (/^\d{1,2}:\d{2}/.test(str)) return str.substring(0, 5);
+        return null;
+    };
+
+    const t1 = extractTime(startTimeStr);
+    const t2 = extractTime(endTimeStr);
+
+    if (!t1 || !t2) return 0;
+
+    try {
+        const [h1, m1] = t1.split(':').map(Number);
+        const [h2, m2] = t2.split(':').map(Number);
+
+        if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
+
+        const startMinutes = h1 * 60 + m1;
+        const endMinutes = h2 * 60 + m2;
+
+        let diff = (endMinutes - startMinutes) / 60;
+
+        // Subtract break
+        diff -= parseFloat(breakHours) || 0;
+
+        return isNaN(diff) || diff < 0 ? 0 : diff;
+    } catch (e) {
+        return 0;
+    }
 };
 
 /**
