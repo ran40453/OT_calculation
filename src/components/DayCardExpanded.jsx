@@ -148,7 +148,25 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
 
     // Prefer stored OT for initial display, but if user edits endTime, it will recalc via syncUpdate
     // However, for rendering the *current* state of the card (which might be historical), trust record.otHours if valid
-    const otHours = (!isNaN(storedOT) && storedOT > 0) ? storedOT : (isNaN(calculatedOT) ? 0 : calculatedOT);
+    // Normalize record values for comparison
+    const recordEndTime = (() => {
+        let t = record?.endTime || '17:30';
+        if (t.includes('T')) {
+            try { t = format(new Date(t), 'HH:mm'); } catch (e) { t = '17:30'; }
+        }
+        return t;
+    })();
+
+    const isDirty =
+        endTime !== recordEndTime ||
+        isWorkDay !== (record?.isWorkDay || false) ||
+        isHoliday !== (record?.isHoliday || false) ||
+        isLeave !== (record?.isLeave || false) ||
+        travelCountry !== (standardizeCountry(record?.travelCountry)) ||
+        otType !== (record?.otType || 'pay');
+
+    // If dirty (user edited), show live calc. If clean, show stored (history) unless stored is missing.
+    const otHours = (isDirty || isNaN(storedOT) || storedOT === 0) ? (isNaN(calculatedOT) ? 0 : calculatedOT) : storedOT;
     const salaryMetrics = settings ? calculateDailySalary({ ...record, endTime, otHours, isHoliday, isWorkDay, isLeave, otType }, settings) : { total: 0 };
     const dailySalary = salaryMetrics?.total || 0;
     const compUnits = calculateCompLeaveUnits({ otHours, otType });
