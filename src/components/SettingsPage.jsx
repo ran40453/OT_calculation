@@ -283,7 +283,7 @@ function SettingsPage({ isPrivacy }) {
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">上班時間 (Start)</label>
                                     <input
                                         type="time"
-                                        value={settings.rules?.standardStartTime || "08:30"}
+                                        value={settings.rules?.standardStartTime || "08:00"}
                                         onChange={(e) => updateSetting('rules', 'standardStartTime', e.target.value)}
                                         className="neumo-pressed h-10 px-4 text-xs font-black text-[#202731] rounded-xl bg-gray-50/50 focus:outline-none w-full"
                                     />

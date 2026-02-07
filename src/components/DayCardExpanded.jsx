@@ -96,7 +96,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
             // Full day OT: (End - Start) - Break
             // Only calculate if we have a valid end time (not just the default if it was never set)
             // But wait, syncUpdate is called on save or edit, so finalEndTime IS the intended time.
-            const start = settings?.rules?.standardStartTime || "08:30";
+            const start = settings?.rules?.standardStartTime || "08:00";
             const breakTime = settings?.rules?.lunchBreak || 1.5;
             otHours = calculateDuration(start, finalEndTime, breakTime);
         } else {
