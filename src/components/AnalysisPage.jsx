@@ -29,6 +29,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
     const [activeTab, setActiveTab] = useState('financial'); // financial, travel
     const [isSalaryDetailOpen, setIsSalaryDetailOpen] = useState(false);
     const [isBonusDetailOpen, setIsBonusDetailOpen] = useState(false);
+    const [isLeaveListOpen, setIsLeaveListOpen] = useState(false);
 
     const mask = (val) => isPrivacy ? '••••' : val;
 
@@ -249,6 +250,16 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
         return Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count)
     }
 
+    const leaveTypeStats = () => {
+        const counts = {}
+        data.filter(r => r.isLeave).forEach(r => {
+            const type = r.leaveType || '未分類';
+            const days = (parseFloat(r.leaveDuration) || 8) / 8;
+            counts[type] = (counts[type] || 0) + days;
+        });
+        return Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+    }
+
     return (
         <div className="space-y-6 pb-32">
             <header className="flex justify-between items-end">
@@ -349,15 +360,17 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                         className="space-y-6"
                     >
                         {/* Travel Stats & History */}
+                        <div className="grid grid-cols-3 gap-2">
+                            <div onClick={() => setIsLeaveListOpen(true)} className="cursor-pointer">
+                                <MiniStatCard label="請假" value={data.filter(r => r.isLeave).length} unit="Recs" color="text-rose-500" />
+                            </div>
+                            <MiniStatCard label="出差" value={stats.yearMetrics.tripCount} unit="Days" color="text-emerald-500" />
+                            <MiniStatCard label="加班" value={stats.yearMetrics.totalOT.toFixed(0)} unit="H" color="text-indigo-500" />
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <HistoryCard label="出差國家分佈" items={countryStats().slice(0, 3)} />
-
-                            {/* Updated 3-col grid for stats */}
-                            <div className="grid grid-cols-3 gap-2 h-full">
-                                <MiniStatCard label="請假" value={data.filter(r => r.isLeave).length} unit="Days" color="text-rose-500" />
-                                <MiniStatCard label="出差" value={stats.yearMetrics.tripCount} unit="Days" color="text-emerald-500" />
-                                <MiniStatCard label="加班" value={stats.yearMetrics.totalOT.toFixed(0)} unit="H" color="text-indigo-500" />
-                            </div>
+                            <LeaveBreakdownCard label="假別統計 (Days)" items={leaveTypeStats()} />
                         </div>
 
                         {/* Attendance Grid */}
@@ -413,6 +426,12 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                     syncRecordsToGist(newData);
                 }}
                 isPrivacy={isPrivacy}
+            />
+            <LeaveListModal
+                isOpen={isLeaveListOpen}
+                onClose={() => setIsLeaveListOpen(false)}
+                data={data.filter(r => r.isLeave)}
+                mask={mask}
             />
         </div>
     )
@@ -543,6 +562,67 @@ function BonusDetailModal({ isOpen, onClose, data, onUpdate, isPrivacy }) {
                     ))}
                 </div>
             </motion.div>
+        </div>
+    )
+}
+
+function LeaveListModal({ isOpen, onClose, data }) {
+    if (!isOpen) return null;
+    const sorted = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose} className="absolute inset-0 bg-gray-500/20 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-sm neumo-card p-6 max-h-[80vh] flex flex-col">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-black uppercase text-rose-500 flex items-center gap-2"><Briefcase size={20} /> 請假紀錄</h3>
+                    <button onClick={onClose}><X size={18} /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                    {sorted.length === 0 && <p className="text-center text-gray-400 text-xs">尚無請假紀錄</p>}
+                    {sorted.map((r, i) => (
+                        <div key={i} className="neumo-pressed p-3 rounded-xl flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="flex flex-col items-center justify-center w-10 h-10 bg-white rounded-lg shadow-sm">
+                                    <span className="text-[8px] font-black text-gray-400 uppercase">{format(new Date(r.date), 'MMM')}</span>
+                                    <span className="text-sm font-black text-[#202731]">{format(new Date(r.date), 'dd')}</span>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-black text-gray-700">{r.leaveType || '請假'}</div>
+                                    <div className="text-[9px] font-bold text-gray-400">
+                                        {(parseFloat(r.leaveDuration) || 8) === 8 ? '全天 (8H)' : `${(parseFloat(r.leaveDuration) || 0).toFixed(1)} Hours`}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="px-2 py-1 rounded bg-rose-50 text-[9px] font-black text-rose-600 border border-rose-100">
+                                {r.leaveType || 'Leave'}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </motion.div>
+        </div>
+    )
+}
+
+function LeaveBreakdownCard({ label, items }) {
+    return (
+        <div className="neumo-card p-6 h-full">
+            <h3 className="font-black italic text-sm text-gray-400 uppercase tracking-widest mb-4">{label}</h3>
+            <div className="space-y-3">
+                {items.length === 0 && <p className="text-xs text-gray-400 font-bold">No leave data</p>}
+                {items.map(c => (
+                    <div key={c.name} className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                            <span className="text-gray-500">{c.name}</span>
+                            <span className="text-rose-500">{c.count.toFixed(1)} Days</span>
+                        </div>
+                        <div className="h-1.5 neumo-pressed rounded-full overflow-hidden bg-gray-100">
+                            <div style={{ width: `${(c.count / (items[0]?.count || 1)) * 100}%` }} className="h-full bg-rose-500 rounded-full" />
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     )
 }

@@ -32,7 +32,7 @@ function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
     const storedOT = parseFloat(record?.otHours);
 
     let calculatedOT = 0;
-    if (settings) {
+    if (settings && !isLeave) {
         const isRestDay = isSunday || isSaturday || isHoliday;
         if (isRestDay) {
             const start = settings.rules?.standardStartTime || "08:30";

@@ -26,7 +26,26 @@ const defaultSettings = {
         standardStartTime: "08:00", // Default start time
         lunchBreak: 1.5, // Default break in hours
     },
-    bonusCategories: ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅']
+    bonusCategories: ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅'],
+    leaveRules: {
+        '特休': { ratio: 1.0, label: '特休' },
+        '事假': { ratio: 0.0, label: '事假' },
+        '病假': { ratio: 0.5, label: '病假' },
+        '公假': { ratio: 1.0, label: '公假' },
+        '婚假': { ratio: 1.0, label: '婚假' },
+        '公傷假': { ratio: 1.0, label: '公傷假' },
+        '喪假': { ratio: 1.0, label: '喪假' },
+        '有薪產假': { ratio: 1.0, label: '有薪產假' },
+        '無薪產假': { ratio: 0.0, label: '無薪產假' },
+        '補休': { ratio: 1.0, label: '補休' }, // Paid (already earned), taking it doesn't deduct salary.
+        '產檢假': { ratio: 1.0, label: '產檢假' },
+        '陪產檢及陪產假': { ratio: 1.0, label: '陪產檢及陪產假' },
+        '駐地休假': { ratio: 1.0, label: '駐地休假' },
+        '生理假': { ratio: 0.5, label: '生理假' },
+        '家庭照顧假': { ratio: 0.0, label: '家庭照顧假' },
+        '住院病假': { ratio: 0.5, label: '住院病假' },
+        '健檢假': { ratio: 1.0, label: '健檢假' },
+    }
 };
 
 
@@ -309,9 +328,41 @@ export const calculateDailySalary = (record, settings) => {
         travelAllowance = dailyUSD * rate;
     }
 
+    // 4. Leave Deduction Calculation
+    let leaveDeduction = 0;
+    if (record.isLeave && record.leaveType) {
+        const rules = settings.leaveRules || {};
+        const rule = rules[record.leaveType] || { ratio: 0 }; // Default to 0 ratio if unknown? Or 1? Let's default to 0 for safety.
+        const ratio = parseFloat(rule.ratio);
+        // Default duration to 8 hours if not set (Full Day)
+        // If "Full Day" toggle is on, UI might not save hours. 
+        // We should add 'isFullDay' or just rely on leaveDuration.
+        // If leaveDuration is missing but isLeave is true, assume 8h.
+        const duration = parseFloat(record.leaveDuration) || 8;
+
+        // Deduction = Cost of those hours * (1 - ratio)
+        // e.g. Ratio 1.0 (Paid) -> Deduction 0
+        // Ratio 0.0 (Unpaid) -> Deduction Cost
+        // Ratio 0.5 (Half) -> Deduction 0.5 * Cost
+
+        // Ensure ratio is valid (0-1).
+        const safeRatio = isNaN(ratio) ? 0 : ratio;
+
+        // Calculate cost of the leave duration based on hourly rate
+        const leaveCost = duration * hourlyRate;
+        leaveDeduction = leaveCost * (1 - safeRatio);
+    }
+
     const bonus = parseFloat(record.bonus) || 0;
     const extra = (isNaN(otPay) ? 0 : otPay) + (isNaN(travelAllowance) ? 0 : travelAllowance) + bonus;
-    const total = (isNaN(baseDayPay) ? 0 : baseDayPay) + extra;
+    // Total for the day (Visual only? Or used for charts?)
+    // If I want to show "Earnings" for that day.
+    // BaseDayPay is (Base / 30). 
+    // If I lose money, BaseDayPay should decrease?
+    // Let's keep `baseDayPay` as "Standard Daily".
+    // And `total` = `baseDayPay` + `extra` - `leaveDeduction`?
+    // This `total` is used in `DayCard` to show "+$XXX".
+    const total = (isNaN(baseDayPay) ? 0 : baseDayPay) + extra - leaveDeduction;
 
     return {
         total: isNaN(total) ? 0 : total,
@@ -319,7 +370,8 @@ export const calculateDailySalary = (record, settings) => {
         otPay: isNaN(otPay) ? 0 : otPay,
         travelAllowance: isNaN(travelAllowance) ? 0 : travelAllowance,
         baseDayPay: isNaN(baseDayPay) ? 0 : baseDayPay,
-        bonus: isNaN(bonus) ? 0 : bonus
+        bonus: isNaN(bonus) ? 0 : bonus,
+        leaveDeduction: isNaN(leaveDeduction) ? 0 : leaveDeduction
     };
 };
 

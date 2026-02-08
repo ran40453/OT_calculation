@@ -77,20 +77,22 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
         const totalLeave = records.filter(r => r.isLeave).length // In days
 
         // Financials
-        const baseMonthly = settings?.salary?.baseMonthly || 50000;
+        const baseMonthly = settings?.salary?.baseMonthly !== undefined ? Number(settings.salary.baseMonthly) : 50000;
 
         let otPay = 0;
         let travelAllowance = 0;
         let bonus = 0;
+        let leaveDeduction = 0;
 
         records.forEach(r => {
             const metrics = calculateDailySalary(r, { ...settings, liveRate });
             otPay += metrics?.otPay || 0;
             travelAllowance += metrics?.travelAllowance || 0;
             bonus += (parseFloat(r.bonus) || 0);
+            leaveDeduction += metrics?.leaveDeduction || 0;
         });
 
-        const estimatedTotal = baseMonthly + otPay + travelAllowance + bonus;
+        const estimatedTotal = (baseMonthly + otPay + travelAllowance + bonus) - leaveDeduction;
 
         return {
             baseMonthly,

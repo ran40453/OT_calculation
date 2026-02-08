@@ -241,7 +241,7 @@ function SettingsPage({ isPrivacy }) {
                 {/* 3. OT Rules */}
                 <SettingsCard
                     id="ot"
-                    title="加班與補休規則"
+                    title="加班、補休與請假規則"
                     icon={Calculator}
                     color="text-blue-500"
                     isExpanded={expandedSection === 'ot'}
@@ -273,6 +273,45 @@ function SettingsPage({ isPrivacy }) {
                                 </div>
                                 <p className="text-[8px] text-gray-400 font-bold italic text-right pt-1">* 不滿 0.5H 不計入</p>
                             </div>
+                        </div>
+
+                        {/* Leave Pay Ratio Section */}
+                        <div className="space-y-2 pt-2">
+                            <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-widest pl-1 mb-2 border-b border-rose-100 pb-1">假別支薪比例 (Pay Ratio)</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                                {Object.entries(settings.leaveRules || {}).map(([key, rule]) => (
+                                    <div key={key} className="neumo-pressed p-2 rounded-xl flex justify-between items-center">
+                                        <span className="text-[10px] font-black text-gray-500">{key}</span>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                max="1"
+                                                value={rule.ratio}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value);
+                                                    const newRules = { ...settings.leaveRules };
+                                                    newRules[key] = { ...rule, ratio: val };
+                                                    updateSetting('leaveRules', key, { ...rule, ratio: val });
+                                                    // Note: updateSetting helper might need adjustment for deep nested updates if not using 'rules'
+                                                    // My updateSetting handles top level section.
+                                                    // 'leaveRules' is a top level section in defaultSettings.
+                                                    // So updateSetting('leaveRules', key, value) works if logic supports it.
+                                                    // Let's check updateSetting implementation.
+                                                    // updateSetting(section, field, value) -> settings[section][field] = value.
+                                                    // YES.
+                                                }}
+                                                className="w-12 text-center bg-transparent text-xs font-black text-rose-600 focus:outline-none border-b border-rose-200"
+                                            />
+                                            <span className="text-[9px] text-gray-400 w-8 text-right">
+                                                {(rule.ratio * 100).toFixed(0)}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-[8px] text-gray-400 font-bold italic text-right pt-1">* 0% = 不支薪, 100% = 全薪</p>
                         </div>
 
                         {/* Standard Time Section */}
