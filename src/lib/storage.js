@@ -538,6 +538,7 @@ export const syncRecordsToGist = async (records) => {
     }
 
     try {
+        console.log(`Sync: Starting records sync for ${records.length} items to Gist ${gistId}...`);
         const response = await fetch(`https://api.github.com/gists/${gistId}`, {
             method: 'PATCH',
             headers: {
@@ -554,12 +555,16 @@ export const syncRecordsToGist = async (records) => {
         });
 
         if (response.ok) {
+            console.log('Sync: Records successfully pushed to Gist.');
             localStorage.setItem('ot-data-dirty', 'false'); // Sync success, clear dirty flag
+        } else {
+            const errData = await response.json();
+            console.error('Sync ERROR: Gist update failed:', response.status, errData.message);
         }
 
         return { ok: response.ok };
     } catch (error) {
-        console.error('Failed to sync to Gist:', error);
+        console.error('Sync ERROR: Network failure during Gist sync:', error.message);
         return { ok: false, error: 'Network error' };
     }
 };
@@ -598,6 +603,7 @@ export const syncSettingsToGist = async (settings) => {
     if (!token || !gistId) return { ok: false };
 
     try {
+        console.log(`Sync: Starting settings sync to Gist ${gistId}...`);
         // Strip token before saving to Gist for security
         const { githubToken, ...safeSettings } = settings;
         const response = await fetch(`https://api.github.com/gists/${gistId}`, {
@@ -614,9 +620,17 @@ export const syncSettingsToGist = async (settings) => {
                 }
             })
         });
+
+        if (response.ok) {
+            console.log('Sync: Settings successfully pushed to Gist.');
+        } else {
+            const errData = await response.json();
+            console.error('Sync ERROR: Settings Gist update failed:', response.status, errData.message);
+        }
+
         return { ok: response.ok };
     } catch (error) {
-        console.error('Failed to sync settings to Gist:', error);
+        console.error('Sync ERROR: Network failure during settings sync:', error.message);
         return { ok: false };
     }
 };

@@ -23,31 +23,58 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
     const [showConfirm, setShowConfirm] = useState(false)
     const [conflictingDates, setConflictingDates] = useState([])
     const [pendingPayloads, setPendingPayloads] = useState(null)
+    const [leaveType, setLeaveType] = useState('特休')
+    const [isFullDay, setIsFullDay] = useState(true)
+    const [leaveStartTime, setLeaveStartTime] = useState(settings?.rules?.standardStartTime || '08:00')
+    const [leaveEndTime, setLeaveEndTime] = useState(settings?.rules?.standardEndTime || '17:30')
 
     const bonusCategories = settings?.bonusCategories || ['季獎金', '年終獎金', '其他獎金', '補助金', '退費', '分紅']
 
     if (!isOpen) return null
 
+    // Helper to calculate duration for leave
+    const calcDuration = (start, end) => {
+        const [h1, m1] = (start || "08:00").split(':').map(Number);
+        const [h2, m2] = (end || "17:30").split(':').map(Number);
+        const diff = (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
+        const lunch = settings?.rules?.lunchBreak || 1.5;
+        // Simple logic: if duration spans lunch, subtract it. 
+        // For simplicity matching DayCardExpanded:
+        return Math.max(0, diff - lunch);
+    };
+
     const otHours = (() => {
-        const [h1, m1] = "17:30".split(':').map(Number);
+        const stdEnd = settings?.rules?.standardEndTime || "17:30";
+        const [h1, m1] = stdEnd.split(':').map(Number);
         const [h2, m2] = endTime.split(':').map(Number);
         return Math.max(0, (h2 * 60 + m2 - (h1 * 60 + m1)) / 60);
     })();
 
-    const generatePayload = (targetDate) => ({
-        date: new Date(targetDate),
-        travelCountry: mode === 'attendance' ? country : '',
-        isHoliday: mode === 'attendance' ? isHoliday : false,
-        isWorkDay: mode === 'attendance' ? isWorkDay : false,
-        isLeave: mode === 'attendance' ? isLeave : false,
-        otHours: mode === 'attendance' ? otHours : 0,
-        otType: mode === 'attendance' ? (otHours >= 0.5 ? otType : 'pay') : 'pay',
-        endTime: mode === 'attendance' ? endTime : '',
-        bonus: mode === 'bonus' ? parseFloat(bonus) || 0 : 0,
-        bonusCategory: mode === 'bonus' ? (showCustomCategory ? customCategory : bonusCategory) : '',
-        bonusName: mode === 'bonus' ? bonusName : '',
-        recordType: mode
-    });
+    const generatePayload = (targetDate) => {
+        const payload = {
+            date: new Date(targetDate),
+            travelCountry: mode === 'attendance' ? country : '',
+            isHoliday: mode === 'attendance' ? isHoliday : false,
+            isWorkDay: mode === 'attendance' ? isWorkDay : false,
+            isLeave: mode === 'attendance' ? isLeave : false,
+            otHours: mode === 'attendance' ? otHours : 0,
+            otType: mode === 'attendance' ? (otHours >= 0.5 ? otType : 'pay') : 'pay',
+            endTime: mode === 'attendance' ? endTime : '',
+            bonus: mode === 'bonus' ? parseFloat(bonus) || 0 : 0,
+            bonusCategory: mode === 'bonus' ? (showCustomCategory ? customCategory : bonusCategory) : '',
+            bonusName: mode === 'bonus' ? bonusName : '',
+            recordType: mode
+        };
+
+        if (mode === 'attendance' && isLeave) {
+            payload.leaveType = leaveType;
+            payload.leaveDuration = isFullDay ? 8 : calcDuration(leaveStartTime, leaveEndTime);
+            payload.leaveStartTime = isFullDay ? null : leaveStartTime;
+            payload.leaveEndTime = isFullDay ? null : leaveEndTime;
+        }
+
+        return payload;
+    };
 
     const getDatesInRange = (start, end) => {
         const dates = [];
@@ -359,6 +386,74 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
                                         <Moon size={14} /> 請假
                                     </button>
                                 </div>
+
+                                {/* Leave Details (Only if isLeave is active) */}
+                                {isLeave && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        className="space-y-4 pt-2 overflow-hidden"
+                                    >
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">假別 (Type)</label>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {Object.keys(settings?.leaveRules || {}).map(type => (
+                                                    <button
+                                                        key={type}
+                                                        onClick={() => setLeaveType(type)}
+                                                        className={cn(
+                                                            "py-2 px-1 text-[10px] font-bold rounded-xl transition-all border border-transparent",
+                                                            leaveType === type
+                                                                ? "bg-rose-50 text-rose-600 border-rose-200 shadow-sm"
+                                                                : "neumo-raised text-gray-400 hover:text-gray-600"
+                                                        )}
+                                                    >
+                                                        {type}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between neumo-pressed p-3 rounded-2xl">
+                                            <span className="text-xs font-black text-gray-500">全天請假 (Full Day)</span>
+                                            <button
+                                                onClick={() => setIsFullDay(!isFullDay)}
+                                                className={cn(
+                                                    "w-10 h-6 rounded-full relative transition-colors duration-300",
+                                                    isFullDay ? "bg-rose-500" : "bg-gray-200"
+                                                )}
+                                            >
+                                                <div className={cn(
+                                                    "absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-300",
+                                                    isFullDay ? "translate-x-4" : "translate-x-0"
+                                                )} />
+                                            </button>
+                                        </div>
+
+                                        {!isFullDay && (
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-end px-1">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">請假時間 (Time)</label>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="time"
+                                                        value={leaveStartTime}
+                                                        onChange={(e) => setLeaveStartTime(e.target.value)}
+                                                        className="neumo-pressed flex-1 h-10 px-3 text-xs font-black text-center text-gray-600 rounded-xl bg-transparent focus:outline-none"
+                                                    />
+                                                    <span className="text-gray-300 font-bold">-</span>
+                                                    <input
+                                                        type="time"
+                                                        value={leaveEndTime}
+                                                        onChange={(e) => setLeaveEndTime(e.target.value)}
+                                                        className="neumo-pressed flex-1 h-10 px-3 text-xs font-black text-center text-gray-600 rounded-xl bg-transparent focus:outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </motion.div>
+                                )}
                             </>
                         )}
 

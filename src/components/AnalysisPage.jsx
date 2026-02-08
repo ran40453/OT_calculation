@@ -695,8 +695,10 @@ function TravelListModal({ isOpen, onClose, data }) {
                                     <span>{format(new Date(range.end.date), 'yyyy/MM/dd')}</span>
                                 </div>
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                                <MapPin size={14} />
+                            <div className="text-right">
+                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
+                                    {Math.ceil((new Date(range.end.date) - new Date(range.start.date)) / (1000 * 60 * 60 * 24)) + 1} Days
+                                </span>
                             </div>
                         </div>
                     ))}
@@ -723,24 +725,29 @@ function OTListModal({ isOpen, onClose, data }) {
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                     {sorted.length === 0 && <p className="text-center text-gray-400 text-xs">尚無加班紀錄</p>}
-                    {sorted.map((r, i) => (
-                        <div key={i} className="neumo-pressed p-3 rounded-xl flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                                <div className="flex flex-col items-center justify-center w-12 h-12 bg-white rounded-lg shadow-sm">
-                                    <span className="text-[8px] font-black text-gray-400 uppercase leading-none">{format(new Date(r.date), 'yyyy')}</span>
-                                    <span className="text-[8px] font-black text-gray-400 uppercase">{format(new Date(r.date), 'MMM')}</span>
-                                    <span className="text-lg font-black text-[#202731] leading-none">{format(new Date(r.date), 'dd')}</span>
+                    {sorted.map((r, i) => {
+                        const otPay = calculateDailySalary(r, { ...settings, liveRate }).otPay;
+                        return (
+                            <div key={i} className="neumo-pressed p-3 rounded-xl flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex flex-col items-center justify-center w-12 h-12 bg-white rounded-lg shadow-sm">
+                                        <span className="text-[8px] font-black text-gray-400 uppercase leading-none">{format(new Date(r.date), 'yyyy')}</span>
+                                        <span className="text-[8px] font-black text-gray-400 uppercase">{format(new Date(r.date), 'MMM')}</span>
+                                        <span className="text-lg font-black text-[#202731] leading-none">{format(new Date(r.date), 'dd')}</span>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs font-black text-gray-700">{r.otType === 'leave' ? '補休' : '加班費'}</div>
+                                        <div className="text-[9px] font-bold text-gray-400">{parseFloat(r.otHours).toFixed(1)} Hours</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div className="text-xs font-black text-gray-700">{r.otType === 'leave' ? '補休' : '加班費'}</div>
-                                    <div className="text-[9px] font-bold text-gray-400">{parseFloat(r.otHours).toFixed(1)} Hours</div>
+                                <div className="text-right">
+                                    <div className={cn("px-2 py-1 rounded text-[10px] font-black border", r.otType === 'leave' ? "bg-indigo-50 text-indigo-600 border-indigo-100" : "bg-green-50 text-green-600 border-green-100")}>
+                                        {r.otType === 'leave' ? 'Comp' : `$${Math.round(otPay).toLocaleString()}`}
+                                    </div>
                                 </div>
                             </div>
-                            <div className={cn("px-2 py-1 rounded text-[10px] font-black border", r.otType === 'leave' ? "bg-indigo-50 text-indigo-600 border-indigo-100" : "bg-green-50 text-green-600 border-green-100")}>
-                                {r.otType === 'leave' ? 'Comp' : 'Pay'}
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </motion.div>
         </div>
