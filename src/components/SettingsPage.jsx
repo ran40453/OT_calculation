@@ -157,7 +157,7 @@ function SettingsPage({ isPrivacy }) {
                             onClick={async (e) => {
                                 e.stopPropagation();
                                 setIsTesting(true);
-                                const res = await testConnection(settings.githubToken);
+                                const res = await testConnection(settings.githubToken, settings.gistId);
                                 setTestResult(res);
                                 setIsTesting(false);
                             }}

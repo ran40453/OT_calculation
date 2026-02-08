@@ -496,8 +496,10 @@ export const fetchRecordsFromGist = async () => {
 
         const response = await fetch(GET_GIST_URL(gistId), { headers });
         const gist = await response.json();
-        if (gist.files && gist.files['records.json']) {
-            const recordsContent = gist.files['records.json'].content;
+        const recordsFile = gist.files['records.json'] || gist.files['ot_records.json'] || gist.files['otcal_records.json'];
+
+        if (recordsFile) {
+            const recordsContent = recordsFile.content;
             if (!recordsContent) throw new Error('Gist content is empty');
 
             const records = JSON.parse(recordsContent);
@@ -580,8 +582,10 @@ export const fetchSettingsFromGist = async () => {
     try {
         const response = await fetch(GET_GIST_URL(gistId));
         const gist = await response.json();
-        if (gist.files && gist.files['settings.json']) {
-            const remoteSettings = JSON.parse(gist.files['settings.json'].content);
+        const settingsFile = gist.files['settings.json'] || gist.files['ot_settings.json'] || gist.files['otcal_settings.json'];
+
+        if (settingsFile) {
+            const remoteSettings = JSON.parse(settingsFile.content);
             const localSettings = loadSettings();
             // Merge remote settings with local token (token should probably stay local or be carefully synced)
             const merged = { ...remoteSettings, githubToken: localSettings.githubToken };
@@ -689,20 +693,27 @@ export const syncSettingsToSheets = syncSettingsToGist;
 /**
  * Test connectivity to Gist
  */
-export const testConnection = async (token) => {
+export const testConnection = async (tokenArg, gistIdArg) => {
     const s = loadSettings();
-    const gistId = s.gistId || '7ce68f2145a8c8aa4eabe5127f351f71';
+    const token = tokenArg || s.githubToken;
+    const gistId = gistIdArg || s.gistId || '7ce68f2145a8c8aa4eabe5127f351f71';
+
     try {
+        console.log(`Sync: Testing connection to Gist ${gistId}...`);
         const headers = {};
         if (token) headers['Authorization'] = `token ${token}`;
 
         const response = await fetch(GET_GIST_URL(gistId), { headers });
         if (response.ok) {
             const gist = await response.json();
+            console.log('Sync Test: Connection successful.');
             return { ok: true, status: 200, data: gist };
         }
-        return { ok: false, status: response.status, error: `HTTP ${response.status}` };
+        const errData = await response.json().catch(() => ({}));
+        console.error('Sync Test ERROR:', response.status, errData.message);
+        return { ok: false, status: response.status, error: `HTTP ${response.status}: ${errData.message || 'Not Found'}` };
     } catch (error) {
+        console.error('Sync Test ERROR:', error.message);
         return { ok: false, error: error.message };
     }
 };

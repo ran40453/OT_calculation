@@ -71,7 +71,7 @@ function App() {
             case 'calendar':
                 return <CalendarPage data={records} onUpdate={handleUpdateRecord} isPrivacy={isPrivacy} />
             case 'analysis':
-                return <AnalysisPage data={records} onUpdate={setRecords} isPrivacy={isPrivacy} />
+                return <AnalysisPage data={records} onUpdate={handleUpdateRecord} isPrivacy={isPrivacy} />
             case 'settings':
                 return <SettingsPage isPrivacy={isPrivacy} />
             default:

@@ -460,6 +460,8 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                 isOpen={isOTListOpen}
                 onClose={() => setIsOTListOpen(false)}
                 data={data.filter(r => parseFloat(r.otHours) > 0)}
+                settings={settings}
+                liveRate={liveRate}
             />
         </div>
     )
@@ -708,7 +710,7 @@ function TravelListModal({ isOpen, onClose, data }) {
     )
 }
 
-function OTListModal({ isOpen, onClose, data }) {
+function OTListModal({ isOpen, onClose, data, settings, liveRate }) {
     if (!isOpen) return null;
     const sorted = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -726,7 +728,7 @@ function OTListModal({ isOpen, onClose, data }) {
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                     {sorted.length === 0 && <p className="text-center text-gray-400 text-xs">尚無加班紀錄</p>}
                     {sorted.map((r, i) => {
-                        const otPay = calculateDailySalary(r, { ...settings, liveRate }).otPay;
+                        const otPay = settings ? calculateDailySalary(r, { ...settings, liveRate }).otPay : 0;
                         return (
                             <div key={i} className="neumo-pressed p-3 rounded-xl flex justify-between items-center">
                                 <div className="flex items-center gap-3">
