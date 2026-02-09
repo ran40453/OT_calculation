@@ -151,10 +151,16 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
         onClose();
     }
 
-    const handleDragStart = (e) => {
+    const handleDragStart = (e, type = 'endTime') => {
+        if (e.cancelable) e.preventDefault();
         setIsDragging(true)
         const startY = e.clientY || (e.touches && e.touches[0].clientY)
-        const [h, m] = endTime.split(':').map(Number)
+
+        let initialTime = endTime;
+        if (type === 'leaveStart') initialTime = leaveStartTime;
+        if (type === 'leaveEnd') initialTime = leaveEndTime;
+
+        const [h, m] = initialTime.split(':').map(Number)
         const startMins = h * 60 + m
 
         const handleMove = (moveEvent) => {
@@ -164,7 +170,15 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
             const totalMins = Math.max(0, Math.min(23 * 60 + 45, startMins + minuteDiff))
             const nh = Math.floor(totalMins / 60)
             const nm = totalMins % 60
-            setEndTime(`${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`)
+            const nextTime = `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
+
+            if (type === 'endTime') {
+                setEndTime(nextTime)
+            } else if (type === 'leaveStart') {
+                setLeaveStartTime(nextTime)
+            } else if (type === 'leaveEnd') {
+                setLeaveEndTime(nextTime)
+            }
         }
 
         const handleEnd = () => {
@@ -177,7 +191,7 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
 
         window.addEventListener('mousemove', handleMove)
         window.addEventListener('mouseup', handleEnd)
-        window.addEventListener('touchmove', handleMove)
+        window.addEventListener('touchmove', handleMove, { passive: false })
         window.addEventListener('touchend', handleEnd)
     }
 
@@ -341,15 +355,16 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
                                                 >
                                                     加班費
                                                 </button>
+                                                {/* Official Comp removed as requested */}
                                                 <button
                                                     disabled={otHours < 0.5}
-                                                    onClick={() => setOtType('leave')}
+                                                    onClick={() => setOtType('internal')}
                                                     className={cn(
                                                         "flex-1 rounded-xl text-[10px] font-black transition-all",
-                                                        otType === 'leave' ? "bg-indigo-500 text-white shadow-lg" : "text-gray-400"
+                                                        otType === 'internal' ? "bg-purple-600 text-white shadow-lg" : "text-gray-400"
                                                     )}
                                                 >
-                                                    補休
+                                                    內部補休
                                                 </button>
                                             </div>
                                         </div>
@@ -359,7 +374,10 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
                                 {/* Status Toggles */}
                                 <div className="grid grid-cols-3 gap-3">
                                     <button
-                                        onClick={() => setIsWorkDay(!isWorkDay)}
+                                        onClick={() => {
+                                            setIsWorkDay(!isWorkDay);
+                                            if (!isWorkDay) setIsHoliday(false);
+                                        }}
                                         className={cn(
                                             "h-12 rounded-2xl flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-all",
                                             isWorkDay ? "neumo-pressed text-blue-600" : "neumo-raised text-gray-400"
@@ -368,7 +386,10 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
                                         <Check size={14} /> 平日
                                     </button>
                                     <button
-                                        onClick={() => setIsHoliday(!isHoliday)}
+                                        onClick={() => {
+                                            setIsHoliday(!isHoliday);
+                                            if (!isHoliday) setIsWorkDay(false);
+                                        }}
                                         className={cn(
                                             "h-12 rounded-2xl flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-all",
                                             isHoliday ? "neumo-pressed text-orange-500" : "neumo-raised text-gray-400"
@@ -436,19 +457,25 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">請假時間 (Time)</label>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="time"
-                                                        value={leaveStartTime}
-                                                        onChange={(e) => setLeaveStartTime(e.target.value)}
-                                                        className="neumo-pressed flex-1 h-10 px-3 text-xs font-black text-center text-gray-600 rounded-xl bg-transparent focus:outline-none"
-                                                    />
+                                                    <div
+                                                        className="neumo-pressed flex-1 h-12 flex flex-col items-center justify-center cursor-ns-resize rounded-xl touch-action-none"
+                                                        onMouseDown={(e) => handleDragStart(e, 'leaveStart')}
+                                                        onTouchStart={(e) => handleDragStart(e, 'leaveStart')}
+                                                        style={{ touchAction: 'none' }}
+                                                    >
+                                                        <span className="text-[9px] font-black text-gray-400 leading-none mb-1 uppercase tracking-tight">開始 (Start)</span>
+                                                        <span className="text-sm font-black text-gray-600">{leaveStartTime}</span>
+                                                    </div>
                                                     <span className="text-gray-300 font-bold">-</span>
-                                                    <input
-                                                        type="time"
-                                                        value={leaveEndTime}
-                                                        onChange={(e) => setLeaveEndTime(e.target.value)}
-                                                        className="neumo-pressed flex-1 h-10 px-3 text-xs font-black text-center text-gray-600 rounded-xl bg-transparent focus:outline-none"
-                                                    />
+                                                    <div
+                                                        className="neumo-pressed flex-1 h-12 flex flex-col items-center justify-center cursor-ns-resize rounded-xl touch-action-none"
+                                                        onMouseDown={(e) => handleDragStart(e, 'leaveEnd')}
+                                                        onTouchStart={(e) => handleDragStart(e, 'leaveEnd')}
+                                                        style={{ touchAction: 'none' }}
+                                                    >
+                                                        <span className="text-[9px] font-black text-gray-400 leading-none mb-1 uppercase tracking-tight">結束 (End)</span>
+                                                        <span className="text-sm font-black text-gray-600">{leaveEndTime}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}

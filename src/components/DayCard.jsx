@@ -68,12 +68,12 @@ function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
             layout // Keep layout for subtle grid adjustments if any
             onClick={onClick}
             className={cn(
-                "neumo-card transition-all flex flex-col p-2 md:p-3 relative",
+                "neumo-card transition-all flex flex-col p-1.5 md:p-3 relative",
                 isToday(day) && "ring-2 ring-neumo-brand/40",
-                isHoliday && "bg-orange-50/30",
+                isHoliday && "bg-orange-50/20",
                 isLeave && "opacity-50",
-                isSunday && "bg-[#e0f2fe] shadow-inner text-sky-900",
-                !isSunday && isAfter(startOfDay(day), startOfDay(new Date())) && "bg-[#d1d5db] shadow-inner",
+                isSunday && "bg-[#e0f2fe]/40 text-sky-900 border border-sky-100/50",
+                !isSunday && isAfter(startOfDay(day), startOfDay(new Date())) && "bg-gray-200/50 grayscale-[0.5]",
                 "cursor-pointer overflow-hidden hover:scale-[0.98] active:scale-95 group",
                 !isCurrentMonth && "opacity-10 pointer-events-none scale-95"
             )}
@@ -92,9 +92,14 @@ function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
                     {/* OT indicator */}
                     {otHours > 0 && (
                         <div className="flex items-center gap-0.5 mt-1">
-                            <span className="text-[9px] md:text-xs font-black text-neumo-brand">{otHours.toFixed(1)}h</span>
+                            <span className={cn(
+                                "text-[9px] md:text-xs font-black",
+                                otType === 'internal' ? "text-purple-600" : "text-neumo-brand"
+                            )}>{otHours.toFixed(1)}h</span>
                             {otType === 'leave' ? (
                                 <Coffee size={10} className="text-indigo-500" />
+                            ) : otType === 'internal' ? (
+                                <Coffee size={10} className="text-purple-600" />
                             ) : (
                                 <DollarSign size={10} className="text-green-500" />
                             )}
@@ -105,6 +110,9 @@ function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
                     <div className="flex items-center gap-1 mt-auto">
                         {isHoliday && <Palmtree size={10} className="text-orange-500" strokeWidth={3} />}
                         {isLeave && <Moon size={10} className="text-indigo-400" strokeWidth={3} />}
+                        {record?.Remark?.includes('部門內部補休') && (
+                            <span className="text-[7px] font-black text-purple-600 border border-purple-200 px-0.5 rounded leading-none py-0.5">內</span>
+                        )}
                         {travelCountry && (
                             <span className="text-[7px] font-black text-green-600 uppercase border border-green-200 px-0.5 rounded">
                                 {getCountryCode(travelCountry)}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, isSameDay, startOfWeek, endOfWeek, setMonth, setYear, getDay } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -38,18 +38,24 @@ function CalendarPage({ data, onUpdate, isPrivacy }) {
         console.log('CalendarPage Data Updated:', data.length, 'records');
     }, [data]);
 
-    // Allow body scroll, but we can prevent it when a day is focused if desired.
-    // For now, removing the global hidden overflow to fix desktop clipping.
-    useEffect(() => {
-        if (focusedDay) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
+    // Mobile Swipe Navigation
+    const touchStartX = useRef(null);
+    const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+    const handleTouchEnd = (e) => {
+        if (!touchStartX.current) return;
+        const diff = touchStartX.current - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) setCurrentDate(addMonths(currentDate, 1)); // Swipe Left -> Next Month
+            else setCurrentDate(subMonths(currentDate, 1)); // Swipe Right -> Prev Month
         }
-        return () => {
-            document.body.style.overflow = '';
-        };
-    }, [focusedDay]);
+        touchStartX.current = null;
+    };
+
+    // Remove overflow: hidden logic to allow scrolling as requested
+    useEffect(() => {
+        document.body.style.overflow = '';
+        return () => { document.body.style.overflow = ''; };
+    }, []);
 
     const handleUpdateRecord = (updatedRecord) => {
         onUpdate(updatedRecord)
@@ -111,7 +117,11 @@ function CalendarPage({ data, onUpdate, isPrivacy }) {
     const overlayGeo = useMemo(() => getOverlayGeometry(focusedDay), [focusedDay, days]);
 
     return (
-        <div className="space-y-6 relative">
+        <div
+            className="space-y-4 relative"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+        >
             {/* Month Header */}
             <div className="flex justify-between items-center bg-[#E0E5EC] neumo-raised rounded-3xl p-4 z-20 relative">
                 <button onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="neumo-button p-2">
@@ -140,9 +150,9 @@ function CalendarPage({ data, onUpdate, isPrivacy }) {
             {/* Calendar Grid */}
             <div className="relative pb-12">
                 {/* Weekday Labels */}
-                <div className="grid grid-cols-7 gap-2 md:gap-4 mb-2">
+                <div className="grid grid-cols-7 gap-1 md:gap-3 mb-1">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="text-center text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        <div key={day} className="text-center text-[7px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest">
                             {day}
                         </div>
                     ))}
@@ -150,7 +160,7 @@ function CalendarPage({ data, onUpdate, isPrivacy }) {
 
                 {/* Main Grid */}
                 <div
-                    className="grid grid-cols-7 gap-2 md:gap-4 lg:min-h-[600px] relative" // Min height for desktop feel
+                    className="grid grid-cols-7 gap-1 md:gap-3 lg:min-h-[600px] relative" // Min height for desktop feel
                     style={{
                         gridAutoRows: 'minmax(80px, 1fr)' // Consistent row heights
                     }}

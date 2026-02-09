@@ -152,7 +152,7 @@ export const calculateOTHours = (endTimeStr, standardEndTimeStr = "17:30") => {
  * Calculates comp leave units
  */
 export const calculateCompLeaveUnits = (record) => {
-    if (record.otType === 'leave' && record.otHours) {
+    if ((record.otType === 'leave' || record.otType === 'internal') && record.otHours) {
         // User requested: 0.5h = 1 unit, 1.0h = 2 units (floor(hours * 2))
         const h = parseFloat(record.otHours);
         if (isNaN(h) || h < 0.5) return 0;

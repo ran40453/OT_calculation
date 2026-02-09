@@ -159,9 +159,9 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
         labels: chartMonths.map(m => format(m, 'MMM')),
         datasets: [
             { label: '總收入', data: totalIncomeByMonth, borderColor: 'rgb(253, 224, 71)', backgroundColor: 'rgba(253, 224, 71, 0.4)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, order: 1 },
-            { label: '底薪', data: baseByMonth, borderColor: 'rgb(56, 189, 248)', borderWidth: 1, pointRadius: 0, hidden: true },
-            { label: '獎金', data: bonusByMonth, borderColor: 'rgb(245, 158, 11)', borderWidth: 1, pointRadius: 0, hidden: true },
-            { label: '加班費', data: otPayByMonth, borderColor: 'rgb(255, 69, 0)', borderWidth: 1, pointRadius: 0, hidden: true },
+            { label: '底薪', data: baseByMonth, borderColor: 'rgb(56, 189, 248)', backgroundColor: 'rgba(56, 189, 248, 0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4 },
+            { label: '獎金', data: bonusByMonth, borderColor: 'rgb(245, 158, 11)', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4 },
+            { label: '加班費', data: otPayByMonth, borderColor: 'rgb(255, 69, 0)', backgroundColor: 'rgba(255, 69, 0, 0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4 },
         ]
     };
 
@@ -362,45 +362,88 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                         className="space-y-6"
                     >
                         {/* Travel Stats & History */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div onClick={() => setIsLeaveListOpen(true)} className="cursor-pointer group relative">
-                                <div className="absolute inset-0 bg-rose-400/0 group-hover:bg-rose-400/5 rounded-2xl transition-colors" />
-                                <MiniStatCard label="請假統計" value={data.filter(r => r.isLeave).length} unit="Records" color="text-rose-500" />
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-rose-300">
-                                    <ArrowUpRight size={12} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div onClick={() => setIsTravelListOpen(true)} className="cursor-pointer group relative">
-                                    <div className="absolute inset-0 bg-emerald-400/0 group-hover:bg-emerald-400/5 rounded-2xl transition-colors" />
-                                    <MiniStatCard
-                                        label="出差統計"
-                                        value={stats.yearMetrics.tripCount} unit="Days"
-                                        subValue={mask('$' + Math.round(stats.yearMetrics.totalTravel).toLocaleString())}
-                                        color="text-emerald-500"
-                                    />
-                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-emerald-300">
-                                        <ArrowUpRight size={12} />
-                                    </div>
-                                </div>
-                                <div onClick={() => setIsOTListOpen(true)} className="cursor-pointer group relative">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* OT Statistics Consolidated */}
+                            <div className="space-y-4">
+                                <div onClick={() => setIsOTListOpen(true)} className="cursor-pointer group relative h-full">
                                     <div className="absolute inset-0 bg-indigo-400/0 group-hover:bg-indigo-400/5 rounded-2xl transition-colors" />
-                                    <MiniStatCard
-                                        label="加班統計"
-                                        value={stats.yearMetrics.totalOT.toFixed(1)} unit="Hours"
-                                        subValue={mask('$' + Math.round(stats.yearMetrics.totalOTPay).toLocaleString())}
-                                        color="text-indigo-500"
-                                    />
-                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-300">
-                                        <ArrowUpRight size={12} />
+                                    <div className="neumo-card p-6 h-full flex flex-col">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                <Clock size={14} className="text-indigo-500" /> 加班統計
+                                            </h3>
+                                            <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity text-indigo-300" />
+                                        </div>
+                                        <div className="flex-1 flex flex-col justify-center">
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-4xl font-black text-indigo-500">{stats.yearMetrics.totalOT.toFixed(1)}</span>
+                                                <span className="text-[10px] font-black text-gray-400 uppercase">Hours</span>
+                                            </div>
+                                            <div className="mt-2 text-xs font-black text-gray-700">
+                                                {mask('$' + Math.round(stats.yearMetrics.totalOTPay).toLocaleString())}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <HistoryCard label="出差國家分佈" items={countryStats().slice(0, 3)} />
-                            <LeaveBreakdownCard label="假別統計 (Days)" items={leaveTypeStats()} />
+                            {/* Leave Statistics Consolidated */}
+                            <div className="space-y-4">
+                                <div onClick={() => setIsLeaveListOpen(true)} className="cursor-pointer group relative h-full">
+                                    <div className="absolute inset-0 bg-rose-400/0 group-hover:bg-rose-400/5 rounded-2xl transition-colors" />
+                                    <div className="neumo-card p-6 h-full flex flex-col">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                <Coffee size={14} className="text-rose-500" /> 請假統計
+                                            </h3>
+                                            <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity text-rose-300" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-baseline gap-1 mb-4">
+                                                <span className="text-4xl font-black text-rose-500">{data.filter(r => r.isLeave).length}</span>
+                                                <span className="text-[10px] font-black text-gray-400 uppercase">Records</span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {leaveTypeStats().slice(0, 2).map(c => (
+                                                    <div key={c.name} className="flex justify-between text-[8px] font-black uppercase">
+                                                        <span className="text-gray-400">{c.name}</span>
+                                                        <span className="text-rose-400">{c.count.toFixed(1)}D</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Travel Statistics Consolidated */}
+                            <div className="space-y-4">
+                                <div onClick={() => setIsTravelListOpen(true)} className="cursor-pointer group relative h-full">
+                                    <div className="absolute inset-0 bg-emerald-400/0 group-hover:bg-emerald-400/5 rounded-2xl transition-colors" />
+                                    <div className="neumo-card p-6 h-full flex flex-col">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                <Plane size={14} className="text-emerald-500" /> 出差統計
+                                            </h3>
+                                            <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity text-emerald-300" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-baseline gap-1 mb-4">
+                                                <span className="text-4xl font-black text-emerald-500">{stats.yearMetrics.tripCount}</span>
+                                                <span className="text-[10px] font-black text-gray-400 uppercase">Days</span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {countryStats().slice(0, 2).map(c => (
+                                                    <div key={c.name} className="flex justify-between text-[8px] font-black uppercase">
+                                                        <span className="text-gray-400">{c.name}</span>
+                                                        <span className="text-emerald-400">{c.count}D</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
 
@@ -754,13 +797,18 @@ function OTListModal({ isOpen, onClose, data, settings, liveRate }) {
                                     <div>
                                         <div className="text-xs font-black text-gray-700">{parseFloat(r.otHours).toFixed(1)} Hours</div>
                                         <div className="text-[9px] font-bold text-gray-400">
-                                            {r.otType === 'leave' ? '補休' : '加班'}
+                                            {r.otType === 'leave' ? '正式補休' : r.otType === 'internal' ? '內部補休' : '加班'}
                                         </div>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className={cn("px-2 py-1 rounded text-[10px] font-black border", r.otType === 'leave' ? "bg-indigo-50 text-indigo-600 border-indigo-100" : "bg-green-50 text-green-600 border-green-100")}>
-                                        {r.otType === 'leave' ? 'Comp' : `$${Math.round(otPay).toLocaleString()}`}
+                                    <div className={cn(
+                                        "px-2 py-1 rounded text-[10px] font-black border",
+                                        r.otType === 'leave' ? "bg-indigo-50 text-indigo-600 border-indigo-100" :
+                                            r.otType === 'internal' ? "bg-purple-50 text-purple-600 border-purple-100" :
+                                                "bg-green-50 text-green-600 border-green-100"
+                                    )}>
+                                        {r.otType === 'leave' ? 'Official' : r.otType === 'internal' ? 'Internal' : `$${Math.round(otPay).toLocaleString()}`}
                                     </div>
                                 </div>
                             </div>
