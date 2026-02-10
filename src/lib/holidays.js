@@ -13,10 +13,9 @@ export const isTaiwanHoliday = (date) => {
         if (isNaN(d.getTime())) return false;
 
         const holidays = hd.isHoliday(d);
-        // date-holidays returns an array of holidays for that day, or false
         if (holidays && Array.isArray(holidays)) {
-            // We only care about public holidays
-            return holidays.some(h => h.type === 'public');
+            // Include public holidays and common observances (like Constitution Day)
+            return holidays.some(h => h.type === 'public' || h.type === 'observance' || h.name.includes('行憲紀念日'));
         }
         return !!holidays;
     } catch (e) {
@@ -37,8 +36,9 @@ export const getHolidayName = (date) => {
 
         const holidays = hd.isHoliday(d);
         if (holidays && Array.isArray(holidays)) {
-            const publicHoliday = holidays.find(h => h.type === 'public');
-            return publicHoliday ? publicHoliday.name : null;
+            // Prefer public holidays, fallback to others
+            const h = holidays.find(h => h.type === 'public') || holidays[0];
+            return h ? h.name : null;
         }
         return null;
     } catch (e) {

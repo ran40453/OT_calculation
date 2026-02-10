@@ -66,83 +66,107 @@ function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
 
     return (
         <motion.div
-            layout // Keep layout for subtle grid adjustments if any
+            layout
             onClick={onClick}
             className={cn(
-                "neumo-card transition-all flex flex-col p-1.5 md:p-3 relative",
+                "neumo-card transition-all flex flex-col p-2 md:p-3 relative h-20 md:h-28", // Fixed height for predictability
                 isToday(day) && "ring-2 ring-neumo-brand/40",
-                isHoliday && "bg-rose-50/20",
-                isLeave && "opacity-50",
-                isSunday && "bg-[#e0f2fe]/40 text-sky-900 border border-sky-100/50",
-                !isSunday && isAfter(startOfDay(day), startOfDay(new Date())) && "bg-gray-200/50 grayscale-[0.5]",
+                isHoliday && "bg-rose-50/10",
+                isLeave && "opacity-60",
+                isSunday && "bg-[#e0f2fe]/40 text-sky-900",
+                !isSunday && isAfter(startOfDay(day), startOfDay(new Date())) && "bg-gray-100/50 grayscale-[0.5]",
                 "cursor-pointer overflow-hidden hover:scale-[0.98] active:scale-95 group",
                 !isCurrentMonth && "opacity-10 pointer-events-none scale-95"
             )}
         >
-            {/* Header / Compact Layout */}
-            <div className="flex justify-between items-start w-full h-full min-h-[50px] md:min-h-[80px]">
-                <div className="flex flex-col gap-0.5 md:gap-1">
+            {/* Top Row: Date & Money/Country */}
+            <div className="flex justify-between items-start w-full relative z-10">
+                <div className="flex items-center gap-1.5">
                     <span className={cn(
-                        "text-sm md:text-xl font-black leading-none",
-                        isToday(day) ? "text-neumo-brand" : (isHoliday ? "text-rose-500" : "text-[#202731]"),
+                        "text-base md:text-2xl font-black leading-none",
+                        isToday(day) ? "text-neumo-brand" : (isHoliday ? "text-rose-600" : "text-[#202731]"),
                         isSunday && !isHoliday && "opacity-60"
                     )}>
                         {format(day, 'dd')}
                     </span>
+                    {/* Mobile: Travel Country next to date */}
+                    {travelCountry && (
+                        <span className="md:hidden text-[8px] font-black text-green-600 uppercase border border-green-200 px-1 rounded bg-green-50/50">
+                            {getCountryCode(travelCountry)}
+                        </span>
+                    )}
+                </div>
 
+                {/* Right Top: Desktop Price Pill */}
+                <div className="hidden md:flex flex-col items-end gap-1">
+                    {dailySalary > 0 && !isLeave && (
+                        <div className="bg-white/80 backdrop-blur-sm px-2 py-0.5 rounded-full border border-gray-100 shadow-sm">
+                            <span className="text-[10px] font-black text-gray-500 tabular-nums">
+                                {mask('$' + Math.round(dailySalary).toLocaleString())}
+                            </span>
+                        </div>
+                    )}
+                    {/* Desktop: Travel below price */}
+                    {travelCountry && (
+                        <span className="text-[8px] font-black text-green-600 uppercase border border-green-200 px-1 rounded bg-green-50/50">
+                            {getCountryCode(travelCountry)}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Center Area: OT Info */}
+            <div className="flex-1 flex flex-col justify-center items-end md:items-center relative">
+                {/* Desktop: Centered OT */}
+                {otHours > 0 && (
+                    <div className="absolute right-0 md:static flex items-center gap-1 bg-white/40 md:bg-transparent px-1.5 py-0.5 rounded-lg">
+                        <span className={cn(
+                            "text-xs md:text-lg font-black",
+                            otType === 'internal' ? "text-purple-600" : (otType === 'pay' ? "text-neumo-brand" : "text-indigo-500")
+                        )}>{otHours.toFixed(1)}</span>
+                        {otType === 'leave' ? (
+                            <Coffee size={16} className="text-indigo-500 md:w-5 md:h-5" />
+                        ) : otType === 'internal' ? (
+                            <Coffee size={16} className="text-purple-600 md:w-5 md:h-5" />
+                        ) : (
+                            <DollarSign size={16} className="text-green-500 md:w-5 md:h-5 border-2 border-green-500 rounded-full p-0.5" />
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Bottom Row: Status Icons (Left) & Holiday/Remark (Right) */}
+            <div className="flex justify-between items-end w-full mt-auto relative z-10">
+                {/* Left: Component-style Status Icons (Buffs) */}
+                <div className="flex items-center -space-x-1 md:space-x-1">
                     {isHoliday && (
-                        <span className="text-[7px] md:text-[9px] font-bold text-rose-500/80 truncate max-w-[60px]">
+                        <div className="bg-rose-100 p-1 md:p-1.5 rounded-lg border border-rose-200 shadow-sm">
+                            <Palmtree size={14} className="text-rose-500 md:w-4 md:h-4" strokeWidth={3} />
+                        </div>
+                    )}
+                    {isLeave && (
+                        <div className="bg-indigo-100 p-1 md:p-1.5 rounded-lg border border-indigo-200 shadow-sm">
+                            <Moon size={14} className="text-indigo-500 md:w-4 md:h-4" strokeWidth={3} />
+                        </div>
+                    )}
+                    {record?.Remark?.includes('部門內部補休') && (
+                        <div className="bg-purple-100 p-1 md:p-1.5 rounded-lg border border-purple-200 shadow-sm flex items-center justify-center">
+                            <span className="text-[8px] md:text-[10px] font-black text-purple-600">內</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Right: Desktop only Holiday Name / Remark */}
+                <div className="hidden md:flex items-center gap-2">
+                    {isHoliday && getHolidayName(day) && (
+                        <span className="text-[9px] font-black text-rose-500/80 uppercase tracking-tighter bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
                             {getHolidayName(day)}
                         </span>
                     )}
-
-                    {/* OT indicator */}
-                    {otHours > 0 && (
-                        <div className="flex items-center gap-0.5 mt-1">
-                            <span className={cn(
-                                "text-[9px] md:text-xs font-black",
-                                otType === 'internal' ? "text-purple-600" : "text-neumo-brand"
-                            )}>{otHours.toFixed(1)}h</span>
-                            {otType === 'leave' ? (
-                                <Coffee size={10} className="text-indigo-500" />
-                            ) : otType === 'internal' ? (
-                                <Coffee size={10} className="text-purple-600" />
-                            ) : (
-                                <DollarSign size={10} className="text-green-500" />
-                            )}
-                        </div>
-                    )}
-
-                    {/* Icons Row */}
-                    <div className="flex items-center gap-1 mt-auto">
-                        {isHoliday && <Palmtree size={10} className="text-orange-500" strokeWidth={3} />}
-                        {isLeave && <Moon size={10} className="text-indigo-400" strokeWidth={3} />}
-                        {record?.Remark?.includes('部門內部補休') && (
-                            <span className="text-[7px] font-black text-purple-600 border border-purple-200 px-0.5 rounded leading-none py-0.5">內</span>
-                        )}
-                        {travelCountry && (
-                            <span className="text-[7px] font-black text-green-600 uppercase border border-green-200 px-0.5 rounded">
-                                {getCountryCode(travelCountry)}
-                            </span>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right Side: Money (Desktop mainly) */}
-                <div className="flex flex-col items-end justify-between h-full">
-                    {dailySalary > 0 && !isLeave && (
-                        <span className="text-[8px] md:text-[10px] font-bold text-gray-400 tabular-nums">
-                            {mask('$' + Math.round(dailySalary).toLocaleString())}
+                    {record?.Remark && !record.Remark.includes('部門內部補休') && (
+                        <span className="text-[9px] font-black text-gray-400 max-w-[60px] truncate bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                            {record.Remark}
                         </span>
-                    )}
-
-                    {/* Holiday Name Label (Desktop only) */}
-                    {isHoliday && getHolidayName(day) && (
-                        <div className="hidden md:block mt-auto">
-                            <span className="text-[8px] font-black text-rose-500/60 uppercase tracking-tighter whitespace-nowrap bg-rose-50 px-1 rounded">
-                                {getHolidayName(day)}
-                            </span>
-                        </div>
                     )}
                 </div>
             </div>

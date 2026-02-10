@@ -501,6 +501,40 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                         </div>
 
 
+                        {/* Overtime Hours Chart */}
+                        <div className="neumo-card h-[300px] p-4 flex flex-col">
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">年度加班時數趨勢</h3>
+                            <div className="flex-1 min-h-0 relative">
+                                <Bar
+                                    data={{
+                                        labels: chartMonths.map(m => format(m, 'MMM')),
+                                        datasets: [
+                                            {
+                                                label: '加班時數',
+                                                data: otByMonth,
+                                                backgroundColor: 'rgba(99, 102, 241, 0.4)',
+                                                borderColor: 'rgb(99, 102, 241)',
+                                                borderWidth: 1,
+                                                borderRadius: 4
+                                            }
+                                        ]
+                                    }}
+                                    options={{
+                                        ...options,
+                                        scales: {
+                                            x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                                            y: { display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 8 } } }
+                                        },
+                                        plugins: {
+                                            legend: { display: false },
+                                            tooltip: { enabled: true }
+                                        }
+                                    }}
+                                    plugins={[valuePlugin]}
+                                />
+                            </div>
+                        </div>
+
                         {/* Work Load Chart */}
                         <div className="neumo-card h-[300px] p-4 flex flex-col">
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">工作負荷趨勢 (OT vs Comp)</h3>
@@ -800,7 +834,7 @@ function OTListModal({ isOpen, onClose, data, settings, liveRate }) {
                     <div className="text-right flex flex-col">
                         <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{viewMode === 'pay' ? 'Total Pay' : 'Total Units'}</span>
                         <span className={cn("text-xl font-black", viewMode === 'pay' ? "text-green-600" : "text-purple-600")}>
-                            {viewMode === 'pay' ? `$${Math.round(totalPayOrUnits).toLocaleString()}` : `${totalPayOrUnits}U`}
+                            {viewMode === 'pay' ? `$${Math.round(totalPayOrUnits).toLocaleString()}` : `${totalPayOrUnits}`}
                         </span>
                     </div>
                 </div>
@@ -829,7 +863,7 @@ function OTListModal({ isOpen, onClose, data, settings, liveRate }) {
                             )}>
                                 {viewMode === 'pay'
                                     ? `$${Math.round(calculateDailySalary(r, { ...settings, liveRate }).otPay || 0)}`
-                                    : `${calculateCompLeaveUnits(r)}U`}
+                                    : `${calculateCompLeaveUnits(r)}`}
                             </div>
                         </div>
                     ))}
