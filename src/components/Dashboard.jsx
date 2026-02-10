@@ -37,6 +37,22 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
         };
         init();
     }, [])
+    const parse = (d) => {
+        if (!d) return new Date(0);
+        if (d instanceof Date) return d;
+        const parsed = parseISO(d);
+        if (!isNaN(parsed.getTime())) return parsed;
+        return new Date(d);
+    }
+
+    // Monthly OT trend (last 6 months) — must be before early return to satisfy Rules of Hooks
+    const otChartMonths = useMemo(() => eachMonthOfInterval({ start: startOfMonth(subMonths(today, 5)), end: startOfMonth(today) }), []);
+    const otByMonth = useMemo(() => otChartMonths.map(m => {
+        return data.filter(r => {
+            const d = parse(r.date);
+            return d instanceof Date && !isNaN(d) && isSameMonth(d, m);
+        }).reduce((sum, r) => sum + (parseFloat(r.otHours) || 0), 0);
+    }), [data, otChartMonths]);
 
     if (!settings) return null
 
@@ -45,14 +61,6 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
     // Filter for Current Month Only
     const currentMonthInterval = { start: startOfMonth(today), end: endOfMonth(today) }
     const rollingYearInterval = { start: subDays(today, 365), end: today }
-
-    const parse = (d) => {
-        if (!d) return new Date(0);
-        if (d instanceof Date) return d;
-        const parsed = parseISO(d);
-        if (!isNaN(parsed.getTime())) return parsed;
-        return new Date(d);
-    }
 
     const currentMonthRecords = data.filter(r => {
         const d = parse(r.date);
@@ -159,15 +167,6 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
     }, 0);
 
     const cumulativeDeptCompBalance = allDeptCompEarned - allDeptCompUsed;
-
-    // Monthly OT trend (last 6 months)
-    const otChartMonths = useMemo(() => eachMonthOfInterval({ start: startOfMonth(subMonths(today, 5)), end: startOfMonth(today) }), []);
-    const otByMonth = useMemo(() => otChartMonths.map(m => {
-        return data.filter(r => {
-            const d = parse(r.date);
-            return d instanceof Date && !isNaN(d) && isSameMonth(d, m);
-        }).reduce((sum, r) => sum + (parseFloat(r.otHours) || 0), 0);
-    }), [data, otChartMonths]);
 
     // Bar Chart Data (Horizontal Stacked)
     const barData = {
