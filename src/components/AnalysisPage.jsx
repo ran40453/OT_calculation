@@ -250,6 +250,54 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
         }
     }
 
+    // Yearly Aggregation for comparison charts (#9, #10)
+    const getYearsInData = () => {
+        const years = new Set();
+        data.forEach(r => {
+            const d = parse(r.date);
+            if (d instanceof Date && !isNaN(d)) years.add(d.getFullYear());
+        });
+        // Also add current year
+        years.add(now.getFullYear());
+        return [...years].sort();
+    };
+    const availableYears = getYearsInData();
+
+    const yearlyOTData = availableYears.map(year => {
+        return data.reduce((sum, r) => {
+            const d = parse(r.date);
+            if (d instanceof Date && !isNaN(d) && d.getFullYear() === year) {
+                return sum + (parseFloat(r.otHours) || (r.endTime ? calculateOTHours(r.endTime, settings?.rules?.standardEndTime) : 0));
+            }
+            return sum;
+        }, 0);
+    });
+
+    const yearlyIncomeData = availableYears.map(year => {
+        let yearBase = 0;
+        for (let m = 0; m < 12; m++) {
+            const monthDate = new Date(year, m, 1);
+            if (monthDate > now) break;
+            let base = parseFloat(settings.salary?.baseMonthly) || 50000;
+            if (settings.salaryHistory && Array.isArray(settings.salaryHistory)) {
+                const sortedHistory = [...settings.salaryHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+                const monthEnd = endOfMonth(monthDate);
+                const applicable = sortedHistory.find(h => new Date(h.date) <= monthEnd);
+                if (applicable) base = parseFloat(applicable.amount) || base;
+            }
+            yearBase += base;
+        }
+        const yearExtra = data.reduce((sum, r) => {
+            const d = parse(r.date);
+            if (d instanceof Date && !isNaN(d) && d.getFullYear() === year) {
+                const results = calculateDailySalary(r, { ...settings, liveRate });
+                return sum + (results?.extra || 0);
+            }
+            return sum;
+        }, 0);
+        return yearBase + yearExtra;
+    });
+
 
     const countryStats = () => {
         const counts = {}
@@ -316,7 +364,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                         className="space-y-6"
                     >
                         {/* Financial Stats */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div onClick={() => setIsSalaryDetailOpen(true)} className="cursor-pointer">
                                 <StatCard
                                     label="當年年薪 (Rolling 365)"
@@ -328,6 +376,24 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                                         labels: ['底薪', '加班費', '津貼', '獎金'],
                                         datasets: [{
                                             data: [stats.breakdown.base, stats.breakdown.ot, stats.breakdown.travel, stats.breakdown.bonus],
+                                            backgroundColor: ['#38bdf8', '#ff4500', '#10b981', '#f59e0b'],
+                                            borderWidth: 0,
+                                            cutout: '70%'
+                                        }]
+                                    }}
+                                />
+                            </div>
+                            <div className="cursor-default">
+                                <StatCard
+                                    label="平均月薪"
+                                    value={mask(`$${Math.round(stats.rollingMonthlySalary).toLocaleString()}`)}
+                                    icon={Briefcase}
+                                    color="text-sky-500"
+                                    sub={`底薪: ${mask('$' + Math.round(stats.breakdown.base / 12).toLocaleString())}\n其他: ${mask('$' + Math.round((stats.breakdown.ot + stats.breakdown.travel + stats.breakdown.bonus) / 12).toLocaleString())}`}
+                                    compositionData={{
+                                        labels: ['底薪', '加班費', '津貼', '獎金'],
+                                        datasets: [{
+                                            data: [stats.breakdown.base / 12, stats.breakdown.ot / 12, stats.breakdown.travel / 12, stats.breakdown.bonus / 12],
                                             backgroundColor: ['#38bdf8', '#ff4500', '#10b981', '#f59e0b'],
                                             borderWidth: 0,
                                             cutout: '70%'
@@ -367,6 +433,47 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                                 <LegendItem color="bg-sky-400" label="底薪" value={mask('$' + Math.round(stats.breakdown.base).toLocaleString())} />
                                 <LegendItem color="bg-amber-500" label="獎金" value={mask('$' + Math.round(stats.breakdown.bonus).toLocaleString())} />
                                 <LegendItem color="bg-orange-500" label="加班費" value={mask('$' + Math.round(stats.breakdown.ot).toLocaleString())} />
+                            </div>
+                        </div>
+
+                        {/* Yearly Total Income Comparison Chart (#10) */}
+                        <div className="neumo-card h-[300px] p-4 flex flex-col">
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">每年總收入比較</h3>
+                            <div className="flex-1 min-h-0 relative">
+                                <Bar
+                                    data={{
+                                        labels: availableYears.map(String),
+                                        datasets: [{
+                                            label: '總收入',
+                                            data: yearlyIncomeData,
+                                            backgroundColor: availableYears.map((_, i) => [
+                                                'rgba(253, 224, 71, 0.6)',
+                                                'rgba(56, 189, 248, 0.6)',
+                                                'rgba(99, 102, 241, 0.6)',
+                                                'rgba(245, 158, 11, 0.6)',
+                                                'rgba(16, 185, 129, 0.6)'
+                                            ][i % 5]),
+                                            borderColor: availableYears.map((_, i) => [
+                                                'rgb(253, 224, 71)',
+                                                'rgb(56, 189, 248)',
+                                                'rgb(99, 102, 241)',
+                                                'rgb(245, 158, 11)',
+                                                'rgb(16, 185, 129)'
+                                            ][i % 5]),
+                                            borderWidth: 1,
+                                            borderRadius: 6
+                                        }]
+                                    }}
+                                    options={{
+                                        ...options,
+                                        scales: {
+                                            x: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold' } } },
+                                            y: { display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 8 }, callback: v => '$' + (v / 1000).toFixed(0) + 'k' } }
+                                        },
+                                        plugins: { legend: { display: false }, tooltip: { enabled: true, callbacks: { label: ctx => '$' + Math.round(ctx.raw).toLocaleString() } } }
+                                    }}
+                                    plugins={[valuePlugin]}
+                                />
                             </div>
                         </div>
                     </motion.div>
@@ -501,33 +608,41 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                         </div>
 
 
-                        {/* Overtime Hours Chart */}
+                        {/* Yearly Total OT Comparison Chart (#9) */}
                         <div className="neumo-card h-[300px] p-4 flex flex-col">
-                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">年度加班時數趨勢</h3>
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">每年總加班時數比較</h3>
                             <div className="flex-1 min-h-0 relative">
                                 <Bar
                                     data={{
-                                        labels: chartMonths.map(m => format(m, 'MMM')),
-                                        datasets: [
-                                            {
-                                                label: '加班時數',
-                                                data: otByMonth,
-                                                backgroundColor: 'rgba(99, 102, 241, 0.4)',
-                                                borderColor: 'rgb(99, 102, 241)',
-                                                borderWidth: 1,
-                                                borderRadius: 4
-                                            }
-                                        ]
+                                        labels: availableYears.map(String),
+                                        datasets: [{
+                                            label: '加班時數',
+                                            data: yearlyOTData,
+                                            backgroundColor: availableYears.map((_, i) => [
+                                                'rgba(99, 102, 241, 0.5)',
+                                                'rgba(139, 92, 246, 0.5)',
+                                                'rgba(79, 70, 229, 0.5)',
+                                                'rgba(67, 56, 202, 0.5)'
+                                            ][i % 4]),
+                                            borderColor: availableYears.map((_, i) => [
+                                                'rgb(99, 102, 241)',
+                                                'rgb(139, 92, 246)',
+                                                'rgb(79, 70, 229)',
+                                                'rgb(67, 56, 202)'
+                                            ][i % 4]),
+                                            borderWidth: 1,
+                                            borderRadius: 6
+                                        }]
                                     }}
                                     options={{
                                         ...options,
                                         scales: {
-                                            x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                                            x: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold' } } },
                                             y: { display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 8 } } }
                                         },
                                         plugins: {
                                             legend: { display: false },
-                                            tooltip: { enabled: true }
+                                            tooltip: { enabled: true, callbacks: { label: ctx => ctx.raw.toFixed(1) + 'H' } }
                                         }
                                     }}
                                     plugins={[valuePlugin]}
@@ -739,20 +854,38 @@ function BonusDetailModal({ isOpen, onClose, data, onUpdate, isPrivacy }) {
 }
 
 function LeaveListModal({ isOpen, onClose, data }) {
+    const [leaveViewMode, setLeaveViewMode] = useState('general'); // 'general' or 'deptComp'
     if (!isOpen) return null;
-    const sorted = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const filtered = data.filter(r => {
+        if (leaveViewMode === 'deptComp') return r.leaveType === '部門補休';
+        return r.leaveType !== '部門補休';
+    }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose} className="absolute inset-0 bg-gray-500/20 backdrop-blur-sm" />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-sm neumo-card p-6 max-h-[80vh] flex flex-col">
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-black uppercase text-rose-500 flex items-center gap-2"><Briefcase size={20} /> 請假紀錄</h3>
                     <button onClick={onClose}><X size={18} /></button>
                 </div>
+                {/* Toggle: 一般請假 / 部門補休 */}
+                <div className="flex gap-1 p-1 neumo-pressed rounded-xl mb-4">
+                    <button
+                        onClick={() => setLeaveViewMode('general')}
+                        className={cn("flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all",
+                            leaveViewMode === 'general' ? "bg-rose-500 text-white shadow-md" : "text-gray-400 hover:text-gray-600")}
+                    >一般請假</button>
+                    <button
+                        onClick={() => setLeaveViewMode('deptComp')}
+                        className={cn("flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all",
+                            leaveViewMode === 'deptComp' ? "bg-purple-500 text-white shadow-md" : "text-gray-400 hover:text-gray-600")}
+                    >部門補休</button>
+                </div>
                 <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                    {sorted.length === 0 && <p className="text-center text-gray-400 text-xs">尚無請假紀錄</p>}
-                    {sorted.map((r, i) => (
+                    {filtered.length === 0 && <p className="text-center text-gray-400 text-xs">尚無{leaveViewMode === 'deptComp' ? '部門補休' : '請假'}紀錄</p>}
+                    {filtered.map((r, i) => (
                         <div key={i} className="neumo-pressed p-3 rounded-xl flex justify-between items-center">
                             <div className="flex items-center gap-3">
                                 <div className="flex flex-col items-center justify-center w-12 h-12 bg-white rounded-lg shadow-sm">
@@ -763,11 +896,12 @@ function LeaveListModal({ isOpen, onClose, data }) {
                                 <div>
                                     <div className="text-xs font-black text-gray-700">{r.leaveType || '請假'}</div>
                                     <div className="text-[9px] font-bold text-gray-400">
-                                        {(parseFloat(r.leaveDuration) || 8) === 8 ? '全天 (8H)' : `${(parseFloat(r.leaveDuration) || 0).toFixed(1)} Hours`}
+                                        {(parseFloat(r.leaveDuration) || 8) === 8 ? '全天 (8H)' : `${(parseFloat(r.leaveDuration) || 0).toFixed(1)}H`}
                                     </div>
                                 </div>
                             </div>
-                            <div className="px-2 py-1 rounded bg-rose-50 text-[9px] font-black text-rose-600 border border-rose-100">
+                            <div className={cn("px-2 py-1 rounded text-[9px] font-black border",
+                                leaveViewMode === 'deptComp' ? "bg-purple-50 text-purple-600 border-purple-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                                 {r.leaveType || 'Leave'}
                             </div>
                         </div>

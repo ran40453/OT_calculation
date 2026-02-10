@@ -26,7 +26,7 @@ function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
     // Do NOT default to '17:30' here; if record is missing or has no time, we should treat it as 0 OT.
     const endTime = record?.endTime;
     const travelCountry = standardizeCountry(record?.travelCountry);
-    const isHoliday = record?.isHoliday || false;
+    const isHoliday = record?.isHoliday || isTaiwanHoliday(day);
     const isLeave = record?.isLeave || false;
     const otType = record?.otType || 'pay';
 
@@ -84,8 +84,8 @@ function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
                 <div className="flex items-center gap-1.5">
                     <span className={cn(
                         "text-base md:text-2xl font-black leading-none",
-                        isToday(day) ? "text-neumo-brand" : (isHoliday ? "text-rose-600" : "text-[#202731]"),
-                        isSunday && !isHoliday && "opacity-60"
+                        isToday(day) ? "text-neumo-brand" : ((isHoliday || isTaiwanHoliday(day)) ? "text-rose-600" : "text-[#202731]"),
+                        isSunday && !isHoliday && !isTaiwanHoliday(day) && "opacity-60"
                     )}>
                         {format(day, 'dd')}
                     </span>
@@ -138,27 +138,21 @@ function DayCard({ day, record, onClick, isCurrentMonth = true, isPrivacy }) {
             {/* Bottom Row: Status Icons (Left) & Holiday/Remark (Right) */}
             <div className="flex justify-between items-end w-full mt-auto relative z-10">
                 {/* Left: Component-style Status Icons (Buffs) */}
-                <div className="flex items-center -space-x-1 md:space-x-1">
+                <div className="flex items-center gap-0.5 md:gap-1">
                     {isHoliday && (
-                        <div className="bg-rose-100 p-1 md:p-1.5 rounded-lg border border-rose-200 shadow-sm">
-                            <Palmtree size={14} className="text-rose-500 md:w-4 md:h-4" strokeWidth={3} />
-                        </div>
+                        <Palmtree size={14} className="text-rose-400 md:w-4 md:h-4" strokeWidth={1.5} />
                     )}
                     {isLeave && (
-                        <div className="bg-indigo-100 p-1 md:p-1.5 rounded-lg border border-indigo-200 shadow-sm">
-                            <Moon size={14} className="text-indigo-500 md:w-4 md:h-4" strokeWidth={3} />
-                        </div>
+                        <Moon size={14} className="text-indigo-400 md:w-4 md:h-4" strokeWidth={1.5} />
                     )}
                     {record?.Remark?.includes('部門內部補休') && (
-                        <div className="bg-purple-100 p-1 md:p-1.5 rounded-lg border border-purple-200 shadow-sm flex items-center justify-center">
-                            <span className="text-[8px] md:text-[10px] font-black text-purple-600">內</span>
-                        </div>
+                        <span className="text-[8px] md:text-[10px] font-black text-purple-500">內</span>
                     )}
                 </div>
 
                 {/* Right: Desktop only Holiday Name / Remark */}
                 <div className="hidden md:flex items-center gap-2">
-                    {isHoliday && getHolidayName(day) && (
+                    {(isHoliday || isTaiwanHoliday(day)) && getHolidayName(day) && (
                         <span className="text-[9px] font-black text-rose-500/80 uppercase tracking-tighter bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
                             {getHolidayName(day)}
                         </span>

@@ -443,9 +443,9 @@ function AddRecordModal({ isOpen, onClose, onAdd, settings, records }) {
                                                         initial={{ opacity: 0, y: -10, scale: 0.95 }}
                                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                                        className="absolute left-0 right-0 top-full mt-2 z-[60] bg-[#E0E5EC]/95 backdrop-blur-md neumo-card p-2 grid grid-cols-2 gap-2 shadow-2xl"
+                                                        className="absolute left-0 right-0 top-full mt-2 z-[60] bg-[#E0E5EC]/95 backdrop-blur-md neumo-card p-2 grid grid-cols-2 gap-2 shadow-2xl max-h-[240px] overflow-y-auto"
                                                     >
-                                                        {Object.keys(settings?.leaveRules || {}).map(type => (
+                                                        {Object.keys(settings?.leaveRules || {}).filter(type => type !== '補休').map(type => (
                                                             <button
                                                                 key={type}
                                                                 onClick={() => {

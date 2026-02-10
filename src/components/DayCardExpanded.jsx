@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { format, getDay, isAfter } from 'date-fns' // Added getDay, isAfter
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Clock, Check, Palmtree, Moon, DollarSign, Coffee, X } from 'lucide-react'
+import { MapPin, Clock, Check, Palmtree, Moon, DollarSign, Coffee, Trash2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { loadSettings, calculateOTHours, calculateDuration, calculateDailySalary, calculateCompLeaveUnits, fetchExchangeRate, standardizeCountry } from '../lib/storage' // Added calculateDuration
 import { isTaiwanHoliday, getHolidayName } from '../lib/holidays'
@@ -228,7 +228,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
 
     const toggleOtType = (e) => {
         e.stopPropagation();
-        const types = ['pay', 'leave', 'internal'];
+        const types = ['pay', 'internal', 'leave'];
         const nextIndex = (types.indexOf(otType) + 1) % types.length;
         setOtType(types[nextIndex]);
     }
@@ -265,12 +265,35 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                         <h3 className={cn("text-xl font-black", isHoliday ? "text-rose-500" : "text-neumo-brand")}>
                             {format(day, 'MMM dd')}
                         </h3>
-                        {isHoliday && (
+                        {(isHoliday || isTaiwanHoliday(day)) && (
                             <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest">{getHolidayName(day) || '國定假日'}</span>
                         )}
                     </div>
-                    <button onClick={onClose} className="neumo-button p-2 text-gray-400 hover:text-red-400">
-                        <X size={18} />
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            const confirmed = window.confirm('確定要清除此日所有資料嗎？');
+                            if (!confirmed) return;
+                            onUpdate({
+                                date: day,
+                                endTime: '17:30',
+                                otHours: 0,
+                                travelCountry: '',
+                                isHoliday: isTaiwanHoliday(day),
+                                isWorkDay: false,
+                                isLeave: false,
+                                otType: 'pay',
+                                leaveType: '特休',
+                                leaveDuration: 0,
+                                leaveStartTime: null,
+                                leaveEndTime: null,
+                                Remark: '',
+                            });
+                            if (onClose) onClose();
+                        }}
+                        className="neumo-button p-2 text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                        <Trash2 size={18} />
                     </button>
                 </div>
             )}
@@ -285,30 +308,34 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                         setIsWorkDay(!isWorkDay);
                         if (!isWorkDay) setIsHoliday(false);
                     }}
-                    className={cn("py-3 rounded-2xl flex items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", isWorkDay ? "neumo-pressed text-blue-600" : "neumo-raised text-gray-400")}
+                    className={cn("py-3 rounded-2xl flex flex-col items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", isWorkDay ? "neumo-pressed text-blue-600" : "neumo-raised text-gray-400")}
                 >
-                    <Check size={14} /> 平日
+                    <Check size={16} />
+                    <span>平日</span>
                 </button>
                 <button
                     onClick={() => {
                         setIsHoliday(!isHoliday);
                         if (!isHoliday) setIsWorkDay(false);
                     }}
-                    className={cn("py-3 rounded-2xl flex items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", isHoliday ? "neumo-pressed text-orange-500" : "neumo-raised text-gray-400")}
+                    className={cn("py-3 rounded-2xl flex flex-col items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", isHoliday ? "neumo-pressed text-orange-500" : "neumo-raised text-gray-400")}
                 >
-                    <Palmtree size={14} /> 假日
+                    <Palmtree size={16} />
+                    <span>假日</span>
                 </button>
                 <button
                     onClick={() => setIsLeave(!isLeave)}
-                    className={cn("py-3 rounded-2xl flex items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", isLeave ? "neumo-pressed text-indigo-500" : "neumo-raised text-gray-400")}
+                    className={cn("py-3 rounded-2xl flex flex-col items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", isLeave ? "neumo-pressed text-indigo-500" : "neumo-raised text-gray-400")}
                 >
-                    <Moon size={14} /> 請假
+                    <Moon size={16} />
+                    <span>請假</span>
                 </button>
                 <button
                     onClick={() => { const seq = ['', 'VN', 'IN', 'CN']; setTravelCountry(seq[(seq.indexOf(travelCountry) + 1) % seq.length]); }}
-                    className={cn("py-3 rounded-2xl flex items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", travelCountry ? "neumo-pressed text-green-600" : "neumo-raised text-gray-400")}
+                    className={cn("py-3 rounded-2xl flex flex-col items-center justify-center gap-1 text-[8px] font-bold uppercase transition-all", travelCountry ? "neumo-pressed text-green-600" : "neumo-raised text-gray-400")}
                 >
-                    <MapPin size={14} /> {travelCountry || '出差'}
+                    <MapPin size={16} />
+                    <span>{travelCountry || '出差'}</span>
                 </button>
             </div>
 
@@ -316,7 +343,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
             {isLeave ? (
                 <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
                     <div className="space-y-2 relative">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">假別 (Type)</label>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">假別</label>
                         <button
                             onClick={() => setIsLeaveTypePickerOpen(!isLeaveTypePickerOpen)}
                             className="w-full h-12 neumo-raised rounded-2xl flex items-center justify-between px-4 text-xs font-black text-gray-600 transition-all hover:scale-[0.99] active:scale-95"
@@ -335,7 +362,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
                                     className="absolute left-0 right-0 top-full mt-2 z-[60] bg-[#E0E5EC]/95 backdrop-blur-md neumo-card p-2 grid grid-cols-2 gap-2 shadow-2xl"
                                 >
-                                    {Object.keys(settings?.leaveRules || {}).map(type => (
+                                    {Object.keys(settings?.leaveRules || {}).filter(type => type !== '補休').map(type => (
                                         <button
                                             key={type}
                                             onClick={() => {
@@ -359,7 +386,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                     </div>
 
                     <div className="flex items-center justify-between neumo-pressed p-3 rounded-2xl">
-                        <span className="text-xs font-black text-gray-500">全天請假 (Full Day)</span>
+                        <span className="text-xs font-black text-gray-500">全天</span>
                         <button
                             onClick={() => setIsFullDay(!isFullDay)}
                             className={cn(
@@ -377,8 +404,8 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                     {!isFullDay && (
                         <div className="space-y-2">
                             <div className="flex justify-between items-end px-1">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">請假時間 (Time)</label>
-                                <span className="text-[10px] font-black text-rose-500">{leaveDuration} Hours</span>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">請假時間</label>
+                                <span className="text-[10px] font-black text-rose-500">{leaveDuration}H</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div
@@ -387,7 +414,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                                     onTouchStart={(e) => handleDragStart(e, 'leaveStart')}
                                     style={{ touchAction: 'none' }}
                                 >
-                                    <span className="text-[10px] font-black text-gray-400 leading-none mb-1">開始 (Start)</span>
+                                    <span className="text-[10px] font-black text-gray-400 leading-none mb-1">開始</span>
                                     <span className="text-sm font-black text-gray-600">{leaveStartTime}</span>
                                 </div>
                                 <span className="text-gray-300 font-bold">-</span>
@@ -397,7 +424,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                                     onTouchStart={(e) => handleDragStart(e, 'leaveEnd')}
                                     style={{ touchAction: 'none' }}
                                 >
-                                    <span className="text-[10px] font-black text-gray-400 leading-none mb-1">結束 (End)</span>
+                                    <span className="text-[10px] font-black text-gray-400 leading-none mb-1">結束</span>
                                     <span className="text-sm font-black text-gray-600">{leaveEndTime}</span>
                                 </div>
                             </div>
@@ -433,11 +460,14 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
 
                     {/* OT Details */}
                     {otHours >= 0.5 ? (
-                        <div className="flex items-center justify-between px-2">
-                            <div className="space-y-1">
-                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">加班時數 / 類型</p>
+                        <div className="space-y-3 px-2">
+                            {/* Row 1: OT hours + type */}
+                            <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <span className="text-3xl font-black text-neumo-brand leading-none">{otHours.toFixed(1)}h</span>
+                                    <div>
+                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">加班時數 / 類型</p>
+                                        <span className="text-3xl font-black text-neumo-brand leading-none">{otHours.toFixed(1)}h</span>
+                                    </div>
                                     <button
                                         onClick={toggleOtType}
                                         className={cn(
@@ -451,12 +481,12 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                                     </button>
                                 </div>
                             </div>
-
-                            <div className="text-right space-y-1">
+                            {/* Row 2: Estimated salary/comp */}
+                            <div className="flex items-baseline justify-between px-1 pt-1 border-t border-gray-200/50">
                                 <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">
                                     預估 {otType === 'pay' ? '薪資' : otType === 'leave' ? '公司補休' : '部門補休'}
                                 </p>
-                                <div className="flex items-baseline justify-end gap-1">
+                                <div className="flex items-baseline gap-1">
                                     <span className={cn(
                                         "text-2xl font-black tabular-nums",
                                         otType === 'pay' ? "text-green-600" :
