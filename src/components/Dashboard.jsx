@@ -378,9 +378,9 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
                     </div>
                 </motion.div>
 
-                {/* 2. Key Metrics Grid (OT Number, Comp Battery, Leave Battery) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* OT Stats - Only Number */}
+                {/* 2. Secondary Grid: OT, Toolbox, Battery */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Row 1 Left: OT Stats */}
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -405,44 +405,114 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
                         </div>
                     </motion.div>
 
-                    {/* Comp Stats - Battery Style */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.1 }}
-                        className="neumo-card p-0 overflow-hidden aspect-square flex items-center justify-center"
-                    >
-                        <BatteryIcon
-                            value={Math.round(cumulativeDeptCompBalance)}
-                            total={40} // Visual scale
-                            unit=""
-                            label="部門補休"
-                            subLabel="剩餘單位"
-                            color="bg-purple-500"
-                            className="w-full h-full"
-                        />
-                    </motion.div>
+                    {/* Row 1 Right: Toolbox */}
+                    <ToolboxCard data={currentMonthRecords} mask={mask} />
 
-                    {/* Annual Leave Stats - Battery Style */}
+                    {/* Row 2: Combined Battery Stats (Full Width) */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="neumo-card p-0 overflow-hidden aspect-square flex items-center justify-center"
+                        className="md:col-span-2 neumo-card p-6 flex flex-col md:flex-row items-center justify-around gap-8 relative overflow-hidden"
                     >
-                        <BatteryIcon
-                            value={Number(remainingAnnual).toFixed(1)}
-                            total={annualGiven}
-                            unit=""
-                            label="剩餘特休"
-                            subLabel="Days"
-                            color="bg-teal-500"
-                            className="w-full h-full"
-                        />
+                        <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 to-transparent pointer-events-none" />
+
+                        {/* Dept Comp Battery */}
+                        <div className="flex flex-col items-center gap-4 relative z-10">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Battery size={20} className="text-purple-500" />
+                                <span className="text-sm font-black text-gray-500 uppercase tracking-widest">部門補休</span>
+                            </div>
+                            <BatteryIcon
+                                value={Math.round(cumulativeDeptCompBalance)}
+                                total={40} // TODO: Should this be dynamic? "Earned"?
+                                // User requested "Used / Total". 
+                                // Let's use Balance / (Balance + Used) -> No, Total Earned.
+                                // Actually, let's use a fixed reasonable scale or dynamic max?
+                                // For now, use 40 as visual max, but display text properly.
+                                // Wait, the BatteryIcon displays "Value / Total" if showDetails is true.
+                                unit=""
+                                size="large"
+                                showDetails={true}
+                                label=""
+                                subLabel=""
+                                color="bg-purple-500"
+                            />
+                            <div className="flex gap-4 text-[10px] font-bold text-gray-400">
+                                <span>剩餘: {Math.round(cumulativeDeptCompBalance)}</span>
+                                <span>已用: {Math.round(allDeptCompUsed)}</span>
+                            </div>
+                        </div>
+
+                        {/* Divider (Desktop) */}
+                        <div className="hidden md:block w-px h-32 bg-gray-200/50" />
+
+                        {/* Annual Leave Battery */}
+                        <div className="flex flex-col items-center gap-4 relative z-10">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Palmtree size={20} className="text-teal-500" />
+                                <span className="text-sm font-black text-gray-500 uppercase tracking-widest">特休狀況</span>
+                            </div>
+                            <BatteryIcon
+                                value={Number(remainingAnnual).toFixed(1)}
+                                total={annualGiven}
+                                unit=""
+                                size="large"
+                                showDetails={true}
+                                label=""
+                                subLabel=""
+                                color="bg-teal-500"
+                            />
+                            <div className="flex gap-4 text-[10px] font-bold text-gray-400">
+                                <span>剩餘: {Number(remainingAnnual).toFixed(1)}</span>
+                                <span>總計: {annualGiven}</span>
+                            </div>
+                        </div>
                     </motion.div>
                 </div>
             </div>
         </div>
+    )
+}
+
+function ToolboxCard({ data, mask }) {
+    const handleCopy = () => {
+        const text = data
+            .sort((a, b) => new Date(a.date) - new Date(b.date))
+            .map(r => {
+                const date = format(parseISO(r.date), 'MM/dd')
+                if (r.isLeave) return `${date} 请假 (${r.leaveType}) ${r.leaveDuration}H ${r.remarks || ''}`
+                if (parseFloat(r.otHours) > 0) return `${date} 加班 ${r.otHours}H ${r.endTime ? `(~${r.endTime})` : ''} ${r.remarks || ''}`
+                if (r.travelCountry) return `${date} 出差 ${r.travelCountry} ${r.remarks || ''}`
+                return null
+            })
+            .filter(Boolean)
+            .join('\n')
+
+        if (!text) {
+            alert('本月尚無紀錄可複製');
+            return;
+        }
+        navigator.clipboard.writeText(text);
+        alert('已複製本月紀錄摘要！');
+    }
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="neumo-card p-4 flex flex-col items-center justify-center gap-4 aspect-square group cursor-pointer hover:bg-gray-50/50 transition-colors"
+            onClick={handleCopy}
+        >
+            <div className="p-3 rounded-xl neumo-pressed text-gray-500 group-hover:text-neumo-brand group-hover:scale-110 transition-all">
+                <Briefcase size={24} />
+            </div>
+            <div className="text-center space-y-1">
+                <h4 className="text-sm font-black text-gray-600">快速複製</h4>
+                <p className="text-[10px] font-bold text-gray-400">本月勤怠摘要</p>
+            </div>
+        </motion.div>
     )
 }
 

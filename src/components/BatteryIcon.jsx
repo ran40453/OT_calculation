@@ -9,23 +9,27 @@ function BatteryIcon({
     label,
     subLabel,
     color = 'bg-green-500',
-    className
+    className,
+    size = 'normal', // 'normal', 'large'
+    showDetails = false // If true, show 'Used: X / Total: Y' style
 }) {
     const percentage = Math.min(100, Math.max(0, (value / (total || 1)) * 100));
     const isLow = percentage < 20;
     const displayColor = isLow ? 'bg-rose-500' : color;
 
-    // determine level blocks (like 5 blocks?)
-    // Or just a smooth fill? User said "Battery remaining value icon"
-    // Let's do a smooth fill.
+    // Size classes
+    const containerClass = size === 'large' ? "w-40 h-20 border-[6px] rounded-2xl" : "w-20 h-10 border-[3px] rounded-xl";
+    const nippleClass = size === 'large' ? "w-3 h-8 -right-[10px]" : "w-2 h-4 -right-[7px]";
+    const textClass = size === 'large' ? "text-2xl" : "text-sm";
+    const subTextClass = size === 'large' ? "text-xs" : "text-[10px]";
 
     return (
         <div className={cn("flex flex-col items-center justify-center p-2 group", className)}>
             {/* Battery Body */}
             <div className="relative">
-                <div className="w-20 h-10 border-[3px] border-gray-400/80 rounded-xl p-1 relative flex items-center bg-gray-100/50 backdrop-blur-sm shadow-inner group-hover:scale-105 transition-transform duration-300">
+                <div className={cn("border-gray-400/80 p-1 relative flex items-center bg-gray-100/50 backdrop-blur-sm shadow-inner group-hover:scale-105 transition-transform duration-300", containerClass)}>
                     {/* Terminal (Nipple) */}
-                    <div className="absolute -right-[7px] top-1/2 -translate-y-1/2 w-2 h-4 bg-gray-400/80 rounded-r-md" />
+                    <div className={cn("absolute top-1/2 -translate-y-1/2 bg-gray-400/80 rounded-r-md", nippleClass)} />
 
                     {/* Fill */}
                     <div className="w-full h-full relative overflow-hidden rounded-lg">
@@ -36,18 +40,26 @@ function BatteryIcon({
                             whileHover={{ scale: 1.05, filter: "brightness(1.1)" }}
                             transition={{ type: "spring", stiffness: 120, damping: 15 }}
                         />
-                        {/* Liquid Bubble Effect Overlay (Optional styling) */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent pointer-events-none rounded-md" />
                     </div>
 
                     {/* Value Text Overlay */}
                     <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                        <span className={cn(
-                            "text-sm font-black shadow-sm tracking-tight",
-                            percentage > 55 ? "text-white drop-shadow-md" : "text-gray-600"
-                        )}>
-                            {value}<span className="text-[10px] ml-0.5 opacity-80">{unit}</span>
-                        </span>
+                        <div className="flex flex-col items-center leading-none">
+                            <span className={cn(
+                                "font-black shadow-sm tracking-tight",
+                                textClass,
+                                percentage > 55 ? "text-white drop-shadow-md" : "text-gray-600"
+                            )}>
+                                {typeof value === 'number' ? Math.round(value * 10) / 10 : value}
+                                <span className={cn("opacity-80 ml-0.5", subTextClass)}>{unit}</span>
+                            </span>
+                            {showDetails && (
+                                <span className={cn("font-bold mt-0.5", percentage > 55 ? "text-white/90" : "text-gray-400", size === 'large' ? "text-[10px]" : "text-[8px]")}>
+                                    {total ? `/${total}` : ''}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

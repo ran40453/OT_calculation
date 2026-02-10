@@ -186,7 +186,7 @@ function CalendarPage({ data, onUpdate, isPrivacy }) {
                 <>
 
                     {/* Calendar Grid */}
-                    <div className="relative pb-12">
+                    <div className="relative pb-48">
                         {/* Weekday Labels */}
                         <div className="grid grid-cols-7 gap-1 md:gap-3 mb-1">
                             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
