@@ -396,7 +396,7 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                                             initial={{ opacity: 0, y: -10, scale: 0.95 }}
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                            className="absolute left-0 right-0 top-full mt-2 z-[60] bg-[#E0E5EC]/95 backdrop-blur-md neumo-card p-2 grid grid-cols-2 gap-2 shadow-2xl"
+                                            className="absolute left-0 right-0 bottom-full mb-2 z-[60] bg-[#E0E5EC]/95 backdrop-blur-md neumo-card p-2 grid grid-cols-3 gap-2 shadow-2xl"
                                         >
                                             {Object.keys(settings?.leaveRules || {}).filter(type => type !== '補休').map(type => (
                                                 <button
@@ -407,13 +407,14 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                                                         setIsLeaveTypePickerOpen(false);
                                                     }}
                                                     className={cn(
-                                                        "py-3 px-1 text-[10px] font-black rounded-xl transition-all border border-transparent text-center",
+                                                        "py-3 px-1 text-[10px] font-black rounded-xl transition-all border border-transparent text-center truncate",
                                                         leaveType === type
                                                             ? "bg-rose-50 text-rose-600 border-rose-200 shadow-sm"
                                                             : "neumo-raised text-gray-400 hover:text-gray-600"
                                                     )}
+                                                    title={type}
                                                 >
-                                                    {type}
+                                                    {type === '陪產檢及陪產假' ? '陪產假' : type}
                                                 </button>
                                             ))}
                                         </motion.div>

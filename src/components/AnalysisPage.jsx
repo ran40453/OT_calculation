@@ -270,6 +270,26 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
         }, 0);
     });
 
+    const yearlyLeaveDays = availableYears.map(year => {
+        return data.reduce((sum, r) => {
+            const d = parse(r.date);
+            if (d instanceof Date && !isNaN(d) && d.getFullYear() === year && r.isLeave) {
+                return sum + ((parseFloat(r.leaveDuration) || 8) / 8);
+            }
+            return sum;
+        }, 0);
+    });
+
+    const yearlyTravelDays = availableYears.map(year => {
+        return data.reduce((sum, r) => {
+            const d = parse(r.date);
+            if (d instanceof Date && !isNaN(d) && d.getFullYear() === year && r.travelCountry && r.travelCountry.trim() !== '') {
+                return sum + 1;
+            }
+            return sum;
+        }, 0);
+    });
+
     const yearlyIncomeDetails = availableYears.map(year => {
         let baseTotal = 0;
         for (let m = 0; m < 12; m++) {
@@ -296,7 +316,6 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
 
         return { baseTotal, otTotal, travelTotal, bonusTotal };
     });
-
 
     const countryStats = () => {
         const counts = {}
@@ -331,25 +350,32 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
             </header>
 
             {/* Tab Navigation */}
-            <div className="flex gap-2 p-1 neumo-pressed rounded-2xl">
-                <button
-                    onClick={() => setActiveTab('financial')}
-                    className={cn(
-                        "flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                        activeTab === 'financial' ? "bg-neumo-brand text-white shadow-lg" : "text-gray-400 hover:text-gray-600"
-                    )}
-                >
-                    <span className="flex items-center justify-center gap-2"><Briefcase size={14} /> Financial</span>
-                </button>
-                <button
-                    onClick={() => setActiveTab('travel')}
-                    className={cn(
-                        "flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                        activeTab === 'travel' ? "bg-indigo-500 text-white shadow-lg" : "text-gray-400 hover:text-gray-600"
-                    )}
-                >
-                    <span className="flex items-center justify-center gap-2"><Plane size={14} /> Travel</span>
-                </button>
+            <div className="flex gap-2 p-1 neumo-pressed rounded-2xl relative z-0">
+                {['financial', 'travel'].map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={cn(
+                            "flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors relative z-10",
+                            activeTab === tab ? "text-white" : "text-gray-400 hover:text-gray-600"
+                        )}
+                    >
+                        {activeTab === tab && (
+                            <motion.div
+                                layoutId="activeTab"
+                                className={cn(
+                                    "absolute inset-0 rounded-xl shadow-lg -z-10",
+                                    tab === 'financial' ? "bg-neumo-brand" : "bg-indigo-500"
+                                )}
+                                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            />
+                        )}
+                        <span className="flex items-center justify-center gap-2 relative z-10">
+                            {tab === 'financial' ? <Briefcase size={14} /> : <Plane size={14} />}
+                            {tab === 'financial' ? 'Financial' : 'Travel'}
+                        </span>
+                    </button>
+                ))}
             </div>
 
             <AnimatePresence mode="wait">
@@ -635,39 +661,60 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
 
                         {/* Yearly Total OT Comparison Chart (#9) */}
                         <div className="neumo-card h-[300px] p-4 flex flex-col">
-                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">每年總加班時數比較</h3>
+                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">每年總加班與勤怠比較</h3>
                             <div className="flex-1 min-h-0 relative">
-                                <Bar
+                                <Chart
+                                    type="bar" // Base type
                                     data={{
                                         labels: availableYears.map(String),
-                                        datasets: [{
-                                            label: '加班時數',
-                                            data: yearlyOTData,
-                                            backgroundColor: availableYears.map((_, i) => [
-                                                'rgba(99, 102, 241, 0.5)',
-                                                'rgba(139, 92, 246, 0.5)',
-                                                'rgba(79, 70, 229, 0.5)',
-                                                'rgba(67, 56, 202, 0.5)'
-                                            ][i % 4]),
-                                            borderColor: availableYears.map((_, i) => [
-                                                'rgb(99, 102, 241)',
-                                                'rgb(139, 92, 246)',
-                                                'rgb(79, 70, 229)',
-                                                'rgb(67, 56, 202)'
-                                            ][i % 4]),
-                                            borderWidth: 1,
-                                            borderRadius: 6
-                                        }]
+                                        datasets: [
+                                            {
+                                                type: 'bar',
+                                                label: '加班時數',
+                                                data: yearlyOTData,
+                                                backgroundColor: 'rgba(99, 102, 241, 0.5)',
+                                                borderColor: 'rgb(99, 102, 241)',
+                                                borderWidth: 1,
+                                                borderRadius: 6,
+                                                order: 2,
+                                                yAxisID: 'y'
+                                            },
+                                            {
+                                                type: 'line',
+                                                label: '請假天數',
+                                                data: yearlyLeaveDays,
+                                                borderColor: 'rgb(244, 63, 94)',
+                                                backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                                                borderWidth: 2,
+                                                pointRadius: 4,
+                                                tension: 0.3,
+                                                order: 1,
+                                                yAxisID: 'y1'
+                                            },
+                                            {
+                                                type: 'line',
+                                                label: '出差天數',
+                                                data: yearlyTravelDays,
+                                                borderColor: 'rgb(16, 185, 129)',
+                                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                                borderWidth: 2,
+                                                pointRadius: 4,
+                                                tension: 0.3,
+                                                order: 1,
+                                                yAxisID: 'y1'
+                                            }
+                                        ]
                                     }}
                                     options={{
                                         ...options,
                                         scales: {
                                             x: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold' } } },
-                                            y: { display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 8 } } }
+                                            y: { display: true, position: 'left', grid: { color: 'rgba(0,0,0,0.05)' }, title: { display: true, text: 'Hours' } },
+                                            y1: { display: true, position: 'right', grid: { display: false }, title: { display: true, text: 'Days' } }
                                         },
                                         plugins: {
-                                            legend: { display: false },
-                                            tooltip: { enabled: true, callbacks: { label: ctx => ctx.raw.toFixed(1) + 'H' } }
+                                            legend: { display: true, position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } },
+                                            tooltip: { enabled: true }
                                         }
                                     }}
                                     plugins={[valuePlugin]}
