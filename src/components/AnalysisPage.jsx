@@ -84,10 +84,10 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
         const dates = data.map(r => parse(r.date)).filter(d => d instanceof Date && !isNaN(d));
         if (dates.length === 0) return eachMonthOfInterval({ start: startOfYear(now), end: endOfMonth(now) });
 
-        const minDate = min(dates);
-        const maxDate = max(dates);
+        const minTs = Math.min(...dates.map(d => d.getTime()));
+        const maxTs = Math.max(...dates.map(d => d.getTime()));
         // Ensure at least one month
-        return eachMonthOfInterval({ start: startOfMonth(minDate), end: endOfMonth(maxDate) });
+        return eachMonthOfInterval({ start: startOfMonth(new Date(minTs)), end: endOfMonth(new Date(maxTs)) });
     }
 
     const rollingYearRecords = data.filter(r => {
