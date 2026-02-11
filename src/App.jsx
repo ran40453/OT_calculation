@@ -8,8 +8,10 @@ import Tabbar from './components/Tabbar'
 import AddRecordModal from './components/AddRecordModal'
 
 import { fetchRecordsFromSheets, fetchSettingsFromSheets, addOrUpdateRecord, loadSettings, loadData } from './lib/storage'
+import { useClickFeedback } from './hooks/useClickFeedback'
 
 function App() {
+    useClickFeedback();
     const [activeTab, setActiveTab] = useState('home')
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [records, setRecords] = useState([])
