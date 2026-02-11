@@ -180,46 +180,53 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
     const remainingAnnual = Math.max(0, annualGiven - annualUsed);
 
 
-    // Bar Chart Data (Horizontal Stacked)
+    // Calculate chart segments manually for "stacking" with gaps
+    // This allows us to use floating bars, which render as separate capsules with full rounded corners
+    const GAP = 300; // Gap in currency value
+    const baseStart = 0;
+    const baseEnd = monthMetrics.baseMonthly;
+
+    const otStart = baseEnd + GAP;
+    const otEnd = otStart + monthMetrics.otPay;
+
+    const allowStart = otEnd + GAP;
+    const allowEnd = allowStart + monthMetrics.travelAllowance;
+
+    const bonusStart = allowEnd + GAP;
+    const bonusEnd = bonusStart + monthMetrics.bonus;
+
+    // Bar Chart Data (Floating Bars)
     const barData = {
         labels: ['Stats'],
         datasets: [
             {
                 label: '底薪',
-                data: [monthMetrics.baseMonthly],
+                data: [[baseStart, baseEnd]],
                 backgroundColor: 'rgba(56, 189, 248, 1)', // Sky 400
-                borderColor: '#E0E5EC', // Match background to create "cut" effect
-                borderWidth: 3,
                 barThickness: 40,
                 borderRadius: 20, // Capsule style
-                borderSkipped: false, // Ensure all corners rounded
+                borderSkipped: false,
             },
             {
                 label: '加班',
-                data: [monthMetrics.otPay],
+                data: [[otStart, otEnd]],
                 backgroundColor: 'rgba(255, 69, 0, 1)', // Orange Red
-                borderColor: '#E0E5EC',
-                borderWidth: 3,
                 barThickness: 40,
                 borderRadius: 20,
                 borderSkipped: false,
             },
             {
                 label: '津貼',
-                data: [monthMetrics.travelAllowance],
+                data: [[allowStart, allowEnd]],
                 backgroundColor: 'rgba(16, 185, 129, 1)', // Emerald 500
-                borderColor: '#E0E5EC',
-                borderWidth: 3,
                 barThickness: 40,
                 borderRadius: 20,
                 borderSkipped: false,
             },
             {
                 label: '獎金',
-                data: [monthMetrics.bonus],
+                data: [[bonusStart, bonusEnd]],
                 backgroundColor: 'rgba(245, 158, 11, 1)', // Amber 500
-                borderColor: '#E0E5EC',
-                borderWidth: 3,
                 barThickness: 40,
                 borderRadius: 20,
                 borderSkipped: false,
@@ -241,13 +248,16 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
                 callbacks: {
                     label: (context) => {
                         if (isPrivacy || !showSalary) return `${context.dataset.label}: ••••`;
-                        return `${context.dataset.label}: ${mask('$' + Math.round(context.raw).toLocaleString())}`;
+                        // Handle floating bar data [start, end]
+                        let val = context.raw;
+                        if (Array.isArray(val)) val = val[1] - val[0];
+                        return `${context.dataset.label}: ${mask('$' + Math.round(val).toLocaleString())}`;
                     }
                 }
             },
         },
         scales: {
-            x: { stacked: true, display: false },
+            x: { stacked: false, display: false }, // Floating bars manage their own position
             y: { stacked: true, display: false }
         },
         layout: { padding: 0 }
@@ -271,7 +281,10 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
             const meta0 = chart.getDatasetMeta(0);
             if (meta0.data.length > 0) {
                 const bar0 = meta0.data[0];
-                const value = data.datasets[0].data[0];
+                // Value from float range
+                let value = data.datasets[0].data[0];
+                if (Array.isArray(value)) value = value[1] - value[0];
+
                 if (value > 0) {
                     // Check if width is enough
                     const width = bar0.width;
