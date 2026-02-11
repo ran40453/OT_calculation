@@ -405,7 +405,7 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
                         </div>
 
                         {/* Chart Section */}
-                        <div className="flex-1 w-full h-[60px] relative">
+                        <div className="flex-1 w-full min-w-0 h-[60px] relative">
                             <Bar data={barData} options={barOptions} plugins={[textPlugin]} />
                         </div>
                     </div>
@@ -419,7 +419,7 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="md:col-span-2 neumo-card p-6 flex flex-col md:flex-row items-center justify-around gap-8 relative overflow-hidden"
+                        className="md:col-span-2 neumo-card p-6 flex flex-col md:flex-row items-center justify-center gap-12 relative overflow-hidden"
                     >
                         <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 to-transparent pointer-events-none" />
 
