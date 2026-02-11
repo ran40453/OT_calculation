@@ -49,7 +49,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
 
     useEffect(() => {
         const init = async () => {
-            const s = loadSettings();
+            const s = loadSettings() || {};
             setSettings(s);
             try {
                 const rate = await fetchExchangeRate().catch(() => 32.5);
