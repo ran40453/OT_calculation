@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { format, startOfMonth, endOfMonth, eachMonthOfInterval, isSameMonth, subDays, isWithinInterval, subMonths, eachDayOfInterval, parseISO, isSameDay, addDays, getDay, differenceInCalendarDays } from 'date-fns'
-import { TrendingUp, Clock, Calendar, Globe, ArrowUpRight, Coffee, Trophy, BarChart3, Gift, X, Edit2, Trash2, Check, Plane, Briefcase, MapPin } from 'lucide-react'
+import { format, startOfMonth, endOfMonth, eachMonthOfInterval, isSameMonth, subDays, isWithinInterval, subMonths, eachDayOfInterval, parseISO, isSameDay, addDays, getDay, differenceInCalendarDays, startOfYear, endOfYear, min, max } from 'date-fns'
+import { TrendingUp, Clock, Calendar, Globe, ArrowUpRight, Coffee, Trophy, BarChart3, Gift, X, Edit2, Trash2, Check, Plane, Briefcase, MapPin, ListFilter } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     Chart as ChartJS,
@@ -42,6 +41,10 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
     const [isTravelListOpen, setIsTravelListOpen] = useState(false);
     const [isOTListOpen, setIsOTListOpen] = useState(false);
 
+    // Chart Toggles
+    const [incomeRange, setIncomeRange] = useState('year'); // 'year', 'all'
+    const [workloadRange, setWorkloadRange] = useState('year'); // 'year', 'all'
+
     const mask = (val) => isPrivacy ? '••••' : val;
 
     useEffect(() => {
@@ -69,8 +72,23 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
     const now = new Date()
     const rollingYearInterval = { start: subDays(now, 365), end: now }
     const currentMonthInterval = { start: startOfMonth(now), end: endOfMonth(now) }
-    const chartMonths = eachMonthOfInterval({ start: startOfMonth(subMonths(now, 11)), end: endOfMonth(now) })
 
+    // Dynamic Chart Months based on Range
+    const getChartMonths = (range) => {
+        if (range === 'year') {
+            return eachMonthOfInterval({ start: startOfYear(now), end: endOfMonth(now) })
+        }
+        // All History
+        if (data.length === 0) return eachMonthOfInterval({ start: startOfYear(now), end: endOfMonth(now) });
+
+        const dates = data.map(r => parse(r.date)).filter(d => d instanceof Date && !isNaN(d));
+        if (dates.length === 0) return eachMonthOfInterval({ start: startOfYear(now), end: endOfMonth(now) });
+
+        const minDate = min(dates);
+        const maxDate = max(dates);
+        // Ensure at least one month
+        return eachMonthOfInterval({ start: startOfMonth(minDate), end: endOfMonth(maxDate) });
+    }
 
     const rollingYearRecords = data.filter(r => {
         const d = parse(r.date);
@@ -105,10 +123,12 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
         }
 
         const yearMetrics = getMetrics(rollingYearRecords)
+        const lifetimeMetrics = getMetrics(data) // Use all data for lifetime stats
 
-        // Calculate Base Salary
+        // Calculate Base Salary (Rolling Year)
+        const rollingMonths = eachMonthOfInterval({ start: subDays(now, 365), end: now }); // Use approx months for calculation
         let totalBaseInYear = 0;
-        chartMonths.forEach(m => {
+        rollingMonths.forEach(m => {
             let base = parseFloat(settings.salary?.baseMonthly) || 50000;
             if (settings.salaryHistory && Array.isArray(settings.salaryHistory)) {
                 const sortedHistory = [...settings.salaryHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -126,6 +146,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
             rollingAnnualSalary,
             rollingMonthlySalary,
             yearMetrics,
+            lifetimeMetrics, // Expose lifetime metrics
             breakdown: {
                 base: totalBaseInYear,
                 ot: yearMetrics.totalOTPay,
@@ -138,13 +159,15 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
     const stats = calcStats();
 
     // Chart Data Preparation
+    // Chart Data Preparation
     const getMonthlyStat = (month, fn) => {
         const filtered = data.filter(r => isSameMonth(parse(r.date), month));
         return filtered.reduce((sum, r) => sum + (fn(r) || 0), 0);
     }
 
-    // Financial Chart Data
-    const baseByMonth = chartMonths.map(m => {
+    // Financial Chart Data (Dynamic Range)
+    const incomeChartMonths = getChartMonths(incomeRange);
+    const baseByMonth = incomeChartMonths.map(m => {
         let base = parseFloat(settings.salary?.baseMonthly) || 50000;
         if (settings.salaryHistory && Array.isArray(settings.salaryHistory)) {
             const sortedHistory = [...settings.salaryHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -154,29 +177,30 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
         }
         return base;
     });
-    const bonusByMonth = chartMonths.map(m => getMonthlyStat(m, r => parseFloat(r.bonus)));
-    const otPayByMonth = chartMonths.map(m => getMonthlyStat(m, r => calculateDailySalary(r, { ...settings, liveRate }).otPay));
-    const travelByMonth = chartMonths.map(m => getMonthlyStat(m, r => calculateDailySalary(r, { ...settings, liveRate }).travelAllowance));
-    const totalIncomeByMonth = chartMonths.map((m, i) => baseByMonth[i] + bonusByMonth[i] + otPayByMonth[i] + travelByMonth[i]);
+    const bonusByMonth = incomeChartMonths.map(m => getMonthlyStat(m, r => parseFloat(r.bonus)));
+    const otPayByMonth = incomeChartMonths.map(m => getMonthlyStat(m, r => calculateDailySalary(r, { ...settings, liveRate }).otPay));
+    const travelByMonth = incomeChartMonths.map(m => getMonthlyStat(m, r => calculateDailySalary(r, { ...settings, liveRate }).travelAllowance));
+    const totalIncomeByMonth = incomeChartMonths.map((m, i) => baseByMonth[i] + bonusByMonth[i] + otPayByMonth[i] + travelByMonth[i]);
 
     const incomeData = {
-        labels: chartMonths.map(m => format(m, 'MMM')),
+        labels: incomeChartMonths.map(m => format(m, incomeRange === 'year' ? 'MMM' : 'yy/MM')),
         datasets: [
             { label: '總收入', data: totalIncomeByMonth, borderColor: 'rgb(253, 224, 71)', backgroundColor: 'rgba(253, 224, 71, 0.4)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 0, order: 1 },
-            { label: '底薪', data: baseByMonth, borderColor: 'rgb(56, 189, 248)', backgroundColor: 'rgba(56, 189, 248, 0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4 },
-            { label: '獎金', data: bonusByMonth, borderColor: 'rgb(245, 158, 11)', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4 },
-            { label: '加班費', data: otPayByMonth, borderColor: 'rgb(255, 69, 0)', backgroundColor: 'rgba(255, 69, 0, 0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4 },
+            { label: '底薪', data: baseByMonth, borderColor: 'rgb(56, 189, 248)', backgroundColor: 'rgba(56, 189, 248, 0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4, hidden: false },
+            { label: '獎金', data: bonusByMonth, borderColor: 'rgb(245, 158, 11)', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4, hidden: false },
+            { label: '加班費', data: otPayByMonth, borderColor: 'rgb(255, 69, 0)', backgroundColor: 'rgba(255, 69, 0, 0.1)', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4, hidden: false },
         ]
     };
 
-    // Travel Chart Data
-    const otByMonth = chartMonths.map(m => getMonthlyStat(m, r => parseFloat(r.otHours) || (r.endTime ? calculateOTHours(r.endTime, settings?.rules?.standardEndTime) : 0)));
-    const compByMonth = chartMonths.map(m => getMonthlyStat(m, r => (r.otType === 'leave' || r.otType === 'internal') ? calculateCompLeaveUnits(r) : 0));
-    const leaveDaysByMonth = chartMonths.map(m => getMonthlyStat(m, r => r.isLeave ? (parseFloat(r.leaveDuration) || 8) / 8 : 0));
-    const travelDaysByMonth = chartMonths.map(m => getMonthlyStat(m, r => (r.travelCountry && r.travelCountry.trim() !== '') ? 1 : 0));
+    // Travel Chart Data (Dynamic Range)
+    const workloadChartMonths = getChartMonths(workloadRange);
+    const otByMonth = workloadChartMonths.map(m => getMonthlyStat(m, r => parseFloat(r.otHours) || (r.endTime ? calculateOTHours(r.endTime, settings?.rules?.standardEndTime) : 0)));
+    const compByMonth = workloadChartMonths.map(m => getMonthlyStat(m, r => (r.otType === 'leave' || r.otType === 'internal') ? calculateCompLeaveUnits(r) : 0));
+    const leaveDaysByMonth = workloadChartMonths.map(m => getMonthlyStat(m, r => r.isLeave ? (parseFloat(r.leaveDuration) || 8) / 8 : 0));
+    const travelDaysByMonth = workloadChartMonths.map(m => getMonthlyStat(m, r => (r.travelCountry && r.travelCountry.trim() !== '') ? 1 : 0));
 
     const travelData = {
-        labels: chartMonths.map(m => format(m, 'MMM')),
+        labels: workloadChartMonths.map(m => format(m, workloadRange === 'year' ? 'MMM' : 'yy/MM')),
         datasets: [
             { type: 'bar', label: '加班時數', data: otByMonth, backgroundColor: 'rgba(99, 102, 241, 0.4)', borderColor: 'rgb(99, 102, 241)', borderWidth: 1, borderRadius: 4, yAxisID: 'y', order: 3 },
             { type: 'line', label: '補休單位', data: compByMonth, borderColor: 'rgb(79, 70, 229)', fill: false, tension: 0.4, yAxisID: 'y1', order: 4 },
@@ -202,7 +226,12 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
     const options = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+            legend: {
+                display: true, // Enable legend for toggling
+                labels: { boxWidth: 8, font: { size: 9 }, usePointStyle: true }
+            }
+        },
         scales: { x: { grid: { display: false }, ticks: { font: { size: 9 } } }, y: { display: false } }
     };
 
@@ -214,7 +243,10 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
             y1: { display: false, position: 'right' }
         },
         plugins: {
-            legend: { display: false },
+            legend: {
+                display: true, // Enable legend for toggling
+                labels: { boxWidth: 8, font: { size: 9 }, usePointStyle: true }
+            },
             tooltip: { enabled: true }
         }
     }
@@ -447,17 +479,33 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                         </div>
 
                         {/* Income Trend Chart */}
-                        <div className="neumo-card h-[360px] p-4 flex flex-col">
-                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">年度收入趨勢</h3>
-                            <div className="flex-1 min-h-0 relative">
-                                <Line data={incomeData} options={{ ...options, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
+                        <div className="neumo-card h-[360px] p-4 flex flex-col relative">
+                            <div className="flex justify-between items-start mb-4">
+                                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">年度收入趨勢</h3>
+                                {/* Toggle Button */}
+                                <div className="flex bg-gray-100/50 p-1 rounded-lg">
+                                    <button
+                                        onClick={() => setIncomeRange('year')}
+                                        className={cn(
+                                            "px-3 py-1 rounded-md text-[9px] font-black transition-all",
+                                            incomeRange === 'year' ? "bg-white text-neumo-brand shadow-sm" : "text-gray-400 hover:text-gray-600"
+                                        )}
+                                    >
+                                        今年
+                                    </button>
+                                    <button
+                                        onClick={() => setIncomeRange('all')}
+                                        className={cn(
+                                            "px-3 py-1 rounded-md text-[9px] font-black transition-all",
+                                            incomeRange === 'all' ? "bg-white text-neumo-brand shadow-sm" : "text-gray-400 hover:text-gray-600"
+                                        )}
+                                    >
+                                        全部
+                                    </button>
+                                </div>
                             </div>
-                            {/* Series Thumbnails / Legend */}
-                            <div className="flex gap-4 mt-4 overflow-x-auto pb-2 custom-scrollbar">
-                                <LegendItem color="bg-yellow-400" label="總收入" value={mask('$' + Math.round(stats.rollingAnnualSalary).toLocaleString())} />
-                                <LegendItem color="bg-sky-400" label="底薪" value={mask('$' + Math.round(stats.breakdown.base).toLocaleString())} />
-                                <LegendItem color="bg-amber-500" label="獎金" value={mask('$' + Math.round(stats.breakdown.bonus).toLocaleString())} />
-                                <LegendItem color="bg-orange-500" label="加班費" value={mask('$' + Math.round(stats.breakdown.ot).toLocaleString())} />
+                            <div className="flex-1 min-h-0 relative">
+                                <Line data={incomeData} options={{ ...options, maintainAspectRatio: false }} />
                             </div>
                         </div>
 
@@ -527,7 +575,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                         transition={{ duration: 0.2 }}
                         className="space-y-6"
                     >
-                        {/* Travel Stats & History */}
+                        {/* Travel Stats & History (LIFETIME) */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* OT Statistics Consolidated */}
                             <div className="space-y-4">
@@ -536,20 +584,20 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                                     <div className="neumo-card p-6 h-full flex flex-col">
                                         <div className="flex justify-between items-start mb-4">
                                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                <Clock size={14} className="text-indigo-500" /> 加班統計
+                                                <Clock size={14} className="text-indigo-500" /> 加班統計 (總計)
                                             </h3>
                                             <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity text-indigo-300" />
                                         </div>
                                         <div className="flex-1 flex flex-col justify-center">
                                             <div className="flex items-baseline gap-1">
-                                                <span className="text-4xl font-black text-indigo-500">{stats.yearMetrics.totalOT.toFixed(1)}</span>
+                                                <span className="text-4xl font-black text-indigo-500">{stats.lifetimeMetrics.totalOT.toFixed(1)}</span>
                                                 <span className="text-[10px] font-black text-gray-400 uppercase">Hours</span>
                                             </div>
                                             <div className="mt-2 text-xs font-black text-gray-700">
-                                                {mask('$' + Math.round(stats.yearMetrics.totalOTPay).toLocaleString())}
+                                                {mask('$' + Math.round(stats.lifetimeMetrics.totalOTPay).toLocaleString())}
                                             </div>
                                             <div className="mt-2 flex items-baseline gap-1">
-                                                <span className="text-lg font-black text-purple-600">{stats.yearMetrics.totalDeptComp.toFixed(0)}</span>
+                                                <span className="text-lg font-black text-purple-600">{stats.lifetimeMetrics.totalDeptComp.toFixed(0)}</span>
                                                 <span className="text-[9px] font-black text-gray-400 uppercase">部門補休單 (1H=2Units)</span>
                                             </div>
                                         </div>
@@ -565,7 +613,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                                         <div className="flex-1">
                                             <div className="flex justify-between items-start mb-4">
                                                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                    <Coffee size={14} className="text-rose-500" /> 請假統計
+                                                    <Coffee size={14} className="text-rose-500" /> 請假統計 (總計)
                                                 </h3>
                                                 <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity text-rose-300" />
                                             </div>
@@ -611,12 +659,12 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
                                         <div className="flex-1">
                                             <div className="flex justify-between items-start mb-4">
                                                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                    <Plane size={14} className="text-emerald-500" /> 出差統計
+                                                    <Plane size={14} className="text-emerald-500" /> 出差統計 (總計)
                                                 </h3>
                                                 <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity text-emerald-300" />
                                             </div>
                                             <div className="flex items-baseline gap-1 mb-4">
-                                                <span className="text-4xl font-black text-emerald-500">{stats.yearMetrics.tripCount}</span>
+                                                <span className="text-4xl font-black text-emerald-500">{stats.lifetimeMetrics.tripCount}</span>
                                                 <span className="text-[10px] font-black text-gray-400 uppercase">Days</span>
                                             </div>
                                             <div className="space-y-1">
@@ -652,8 +700,31 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
 
 
                         {/* Work Load Chart */}
-                        <div className="neumo-card h-[300px] p-4 flex flex-col">
-                            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">工作負荷趨勢 (OT vs Comp)</h3>
+                        <div className="neumo-card h-[300px] p-4 flex flex-col relative">
+                            <div className="flex justify-between items-start mb-4">
+                                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">工作負荷趨勢 (OT vs Comp)</h3>
+                                {/* Toggle Button */}
+                                <div className="flex bg-gray-100/50 p-1 rounded-lg">
+                                    <button
+                                        onClick={() => setWorkloadRange('year')}
+                                        className={cn(
+                                            "px-3 py-1 rounded-md text-[9px] font-black transition-all",
+                                            workloadRange === 'year' ? "bg-white text-neumo-brand shadow-sm" : "text-gray-400 hover:text-gray-600"
+                                        )}
+                                    >
+                                        今年
+                                    </button>
+                                    <button
+                                        onClick={() => setWorkloadRange('all')}
+                                        className={cn(
+                                            "px-3 py-1 rounded-md text-[9px] font-black transition-all",
+                                            workloadRange === 'all' ? "bg-white text-neumo-brand shadow-sm" : "text-gray-400 hover:text-gray-600"
+                                        )}
+                                    >
+                                        全部
+                                    </button>
+                                </div>
+                            </div>
                             <div className="flex-1 min-h-0 relative">
                                 <Chart type="bar" data={travelData} options={travelOptions} plugins={[valuePlugin]} />
                             </div>
