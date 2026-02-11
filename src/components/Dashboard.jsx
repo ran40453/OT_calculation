@@ -338,38 +338,37 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
             <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="neumo-card p-1 bg-purple-500 overflow-hidden relative" // Purple container for "White Text"
+                className="neumo-card p-1 bg-purple-500 overflow-hidden relative group" // Group for hover
             >
                 {/* Background Pattern */}
-                <div className="absolute inset-0 bg-purple-500 z-0" />
+                <div className="absolute inset-0 bg-purple-500 z-0 transition-all duration-500 group-hover:brightness-105" />
 
                 <div className="relative z-10 w-full h-24 flex flex-col justify-between p-4">
                     {/* Header Text (White) */}
                     <div className="flex justify-between items-start">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-white/90 uppercase tracking-widest mb-0.5 mix-blend-screen shadow-black/10 text-shadow">本月出勤</span>
+                            <span className="text-[10px] font-black text-white/90 uppercase tracking-widest mb-0.5 mix-blend-screen shadow-black/10 text-shadow group-hover:scale-105 transition-transform duration-300 origin-left">本月出勤</span>
                             <span className="text-xs font-black text-white mix-blend-screen">
                                 {mask(format(today, 'yyyy / MM'))}
                             </span>
                         </div>
                         <div className="flex flex-col items-end">
-                            <span className="text-3xl font-black text-white drop-shadow-md tracking-tighter">
+                            <span className="text-3xl font-black text-white drop-shadow-md tracking-tighter group-hover:scale-110 transition-transform duration-300 origin-right">
                                 {mask(String(attendedPercent))}<span className="text-base align-top">%</span>
                             </span>
                         </div>
                     </div>
 
                     {/* Bottom Grid of Squares (Light Gray Internal BG) */}
-                    {/* Requirement: "Cut into small borderless squares... arranged at the bottom" */}
-                    <div className="mt-2 flex-1 rounded-xl bg-gray-100/90 backdrop-blur-sm p-1.5 flex items-center justify-between gap-1 overflow-hidden shadow-inner">
+                    <div className="mt-2 flex-1 rounded-xl bg-gray-100/90 backdrop-blur-sm p-1.5 flex items-center justify-between gap-1 overflow-hidden shadow-inner group-hover:shadow-lg transition-all duration-300">
                         {attendanceBoxes.map((box, idx) => (
                             <div
                                 key={idx}
                                 className={cn(
                                     "flex-1 h-full rounded-[2px] transition-all duration-300",
                                     box.day <= today
-                                        ? (box.type === 'attendance' ? "bg-purple-500 shadow-sm" : "bg-purple-200")
-                                        : "bg-gray-200"
+                                        ? (box.type === 'attendance' ? "bg-purple-500 shadow-sm group-hover:bg-purple-400" : "bg-purple-200 group-hover:bg-purple-300")
+                                        : "bg-gray-200 group-hover:bg-gray-100"
                                 )}
                             />
                         ))}
@@ -405,14 +404,15 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
                         </div>
                     </div>
 
-                    {/* Custom Block Chart (CSS Grid) */}
-                    <div className="h-16 w-full flex gap-1 rounded-2xl overflow-hidden neumo-pressed p-1.5 bg-gray-100/50">
+                    {/* Custom Block Chart (CSS Grid) with Floated Guide Labels */}
+                    {/* Added mt-8 to give space for floating labels above */}
+                    <div className="mt-8 h-16 w-full flex gap-1 rounded-2xl overflow-visible neumo-pressed p-1.5 bg-gray-100/50 relative z-10">
                         {(!isPrivacy && showSalary) ? (
                             <>
-                                <BlockBar label="底薪" value={monthMetrics.baseMonthly} total={monthMetrics.estimatedTotal} color="bg-sky-400" />
-                                <BlockBar label="加班" value={monthMetrics.otPay} total={monthMetrics.estimatedTotal} color="bg-orange-500" />
-                                <BlockBar label="津貼" value={monthMetrics.travelAllowance} total={monthMetrics.estimatedTotal} color="bg-emerald-500" />
-                                <BlockBar label="獎金" value={monthMetrics.bonus} total={monthMetrics.estimatedTotal} color="bg-amber-500" />
+                                <BlockBar label="底薪" value={monthMetrics.baseMonthly} total={monthMetrics.estimatedTotal} color="bg-sky-400" mask={mask} />
+                                <BlockBar label="加班" value={monthMetrics.otPay} total={monthMetrics.estimatedTotal} color="bg-orange-500" mask={mask} />
+                                <BlockBar label="津貼" value={monthMetrics.travelAllowance} total={monthMetrics.estimatedTotal} color="bg-emerald-500" mask={mask} />
+                                <BlockBar label="獎金" value={monthMetrics.bonus} total={monthMetrics.estimatedTotal} color="bg-amber-500" mask={mask} />
                             </>
                         ) : (
                             <div className="w-full h-full bg-gray-200/50 rounded-xl flex items-center justify-center animate-pulse">
@@ -421,13 +421,7 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
                         )}
                     </div>
 
-                    {/* Legend Grid Below */}
-                    <div className="grid grid-cols-4 gap-2">
-                        <LegendBlock label="底薪" value={monthMetrics.baseMonthly} color="bg-sky-400" privacy={isPrivacy || !showSalary} mask={mask} />
-                        <LegendBlock label="加班" value={monthMetrics.otPay} color="bg-orange-500" privacy={isPrivacy || !showSalary} mask={mask} />
-                        <LegendBlock label="津貼" value={monthMetrics.travelAllowance} color="bg-emerald-500" privacy={isPrivacy || !showSalary} mask={mask} />
-                        <LegendBlock label="獎金" value={monthMetrics.bonus} color="bg-amber-500" privacy={isPrivacy || !showSalary} mask={mask} />
-                    </div>
+                    {/* Legend removed in favor of floating labels */}
                 </motion.div>
 
                 {/* 2. Secondary Grid: OT, Toolbox, Battery (Redesigned Blocks) */}
@@ -512,24 +506,31 @@ function Dashboard({ data, isPrivacy, setIsPrivacy }) {
 }
 
 // Helper Components for Redesign
-function BlockBar({ label, value, total, color }) {
+function BlockBar({ label, value, total, color, mask }) {
     const percent = total > 0 ? (value / total) * 100 : 0;
     if (percent === 0) return null;
+
     return (
         <motion.div
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: `${percent}%`, opacity: 1 }}
             transition={{ duration: 1, ease: "easeOut" }}
-            className={cn("h-full rounded-xl relative group overflow-hidden", color)}
+            className={cn("h-full rounded-xl relative group", color)}
         >
-            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
 
-            {/* Tooltip-ish label on hover or if wide enough */}
-            {percent > 15 && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="text-[10px] font-black text-white drop-shadow-md uppercase tracking-wide">{label}</span>
+            {/* Guide Line & Label (Floating) */}
+            <div className="absolute bottom-full right-0 mb-1 flex flex-col items-end z-20 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity duration-300 origin-bottom scale-y-90 group-hover:scale-y-100">
+                {/* Label Container */}
+                <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-2 py-1 rounded-lg shadow-sm border border-gray-100 mb-0.5 whitespace-nowrap">
+                    <div className={cn("w-1.5 h-1.5 rounded-full", color)} />
+                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-wide">{label}</span>
+                    <span className="text-[10px] font-black text-gray-800">{mask('$' + Math.round(value / 1000) + 'k')}</span>
                 </div>
-            )}
+                {/* Line */}
+                <div className={cn("w-0.5 h-3 rounded-full opacity-50", color)}></div>
+            </div>
         </motion.div>
     )
 }
@@ -563,8 +564,8 @@ function FilledStatsBlock({ label, icon: Icon, value, total, used, unit, color, 
 
     return (
         <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="neumo-card p-1 relative h-32 overflow-hidden group cursor-default"
+            whileHover={{ scale: 1.02, filter: "brightness(1.05)" }}
+            className="neumo-card p-1 relative h-32 overflow-hidden group cursor-default transition-all duration-300"
         >
             {/* Background Container (Pressed) */}
             <div className="w-full h-full rounded-2xl neumo-pressed relative overflow-hidden bg-gray-50/50">
@@ -573,14 +574,14 @@ function FilledStatsBlock({ label, icon: Icon, value, total, used, unit, color, 
                     initial={{ height: 0 }}
                     animate={{ height: `${percent}%` }}
                     transition={{ duration: 1.2, type: "spring", bounce: 0.2 }}
-                    className={cn("absolute bottom-0 left-0 right-0 w-full opacity-90 shadow-[0_0_20px_rgba(0,0,0,0.1)]", color)}
+                    className={cn("absolute bottom-0 left-0 right-0 w-full opacity-90 shadow-[0_0_20px_rgba(0,0,0,0.1)] transition-all duration-300 group-hover:brightness-110 group-hover:saturate-110", color)}
                 />
 
                 {/* Content Layer */}
                 <div className="absolute inset-0 p-4 flex flex-col justify-between z-10 transition-colors duration-300">
                     <div className="flex justify-between items-start">
                         <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-lg bg-white/40 backdrop-blur-md shadow-sm text-gray-600 group-hover:scale-110 transition-transform">
+                            <div className="p-1.5 rounded-lg bg-white/40 backdrop-blur-md shadow-sm text-gray-600 group-hover:scale-110 transition-transform duration-300">
                                 <Icon size={16} />
                             </div>
                             <span className={cn("text-[10px] font-black uppercase tracking-widest transition-colors duration-300", percent > 60 ? "text-white/90" : "text-gray-400")}>
@@ -601,7 +602,7 @@ function FilledStatsBlock({ label, icon: Icon, value, total, used, unit, color, 
 
                     <div className="flex items-end justify-between">
                         <div className="flex flex-col">
-                            <span className={cn("text-3xl font-black tracking-tighter leading-none transition-colors duration-300",
+                            <span className={cn("text-3xl font-black tracking-tighter leading-none transition-colors duration-300 group-hover:scale-105 origin-left",
                                 percent > 40 ? "text-white drop-shadow-md" : textColor)}>
                                 {displayValue}
                             </span>
