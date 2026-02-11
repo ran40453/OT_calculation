@@ -295,7 +295,6 @@ function DayCardExpanded({ day, record, onUpdate, onClose, style, className, hid
                                 leaveDuration: 0,
                                 leaveStartTime: null,
                                 leaveEndTime: null,
-                                leaveEndTime: null,
                                 remarks: ''
                             });
                             // Use a small timeout to prevent race conditions during unmount/update
