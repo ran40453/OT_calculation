@@ -62,7 +62,7 @@ function AnalysisPage({ data, onUpdate, isPrivacy }) {
         init();
     }, []);
 
-    if (!settings || isLoading) return (
+    if (isLoading) return (
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
             <div className="h-10 w-10 border-[6px] border-neumo-brand border-t-transparent rounded-full animate-spin opacity-40" />
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">Loading Insights...</p>
