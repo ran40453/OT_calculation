@@ -41,7 +41,7 @@ function QuickCopyTool({ isOpen, onClose }) {
         const startValue = type === 'date' ? dateOffset : units;
 
         const handleMove = (moveEvent) => {
-            const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientY);
+            const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientX);
             const diff = currentX - startX;
             // Sensitivity Reduced significantly: 
             // Date: ~100px per day
